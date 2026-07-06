@@ -6,6 +6,7 @@ ds-plugin-converter/
 
 # ── Build output / scratch / private notes ──────────────────────────────────
 build/
+build-linux/
 temp/
 PLAN.md
 
