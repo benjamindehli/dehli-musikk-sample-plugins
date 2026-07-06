@@ -1,0 +1,23 @@
+# ── Sub-repositories (each is its own git repo — never tracked here) ────────
+# The workspace root only versions the orchestration CMake + packaging scripts.
+*-plugin/
+dehli-musikk-sampler-engine/
+ds-plugin-converter/
+
+# ── Build output / scratch / private notes ──────────────────────────────────
+build/
+temp/
+PLAN.md
+
+# ── Packaging output + secrets (mirrors the per-plugin .gitignores) ─────────
+packaging/windows/build/
+*.pkg
+*.dmg
+*-Setup.exe
+*.p8
+*.p12
+*.cer
+
+# ── OS / editor noise ────────────────────────────────────────────────────────
+.DS_Store
+.claude/

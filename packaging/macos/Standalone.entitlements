@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- The JUCE Standalone wrapper opens a default audio input device, so the
+         hardened-runtime build needs the audio-input entitlement to run after
+         notarization. The VST3/AU plug-ins are loaded by the host and don't use
+         this file. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+</dict>
+</plist>
