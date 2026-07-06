@@ -86,6 +86,20 @@ cp -R "$VST3" "$STAGE/Library/Audio/Plug-Ins/VST3/"
 cp -R "$AU"   "$STAGE/Library/Audio/Plug-Ins/Components/"
 cp -R "$APP"  "$STAGE/Applications/"
 
+# Sample pack: samples ship as a memory-mapped pack, NOT inside the binaries. Install it
+# system-wide (/Library/Application Support/DehliMusikk/<product>/) — the engine falls back
+# there when the per-user dev path is absent. WITHOUT this, a packed plugin is SILENT on a
+# buyer's machine. Plugins without a pack (embedded samples) skip this.
+PACK_SRC="$REPO_ROOT/$PLUGIN_DIR/assets/samples/samples.pak"
+if [ -f "$PACK_SRC" ]; then
+    echo "==> Staging sample pack ($(du -h "$PACK_SRC" | cut -f1 | tr -d ' '))"
+    PACK_DEST="$STAGE/Library/Application Support/DehliMusikk/$PRODUCT"
+    mkdir -p "$PACK_DEST"
+    cp "$PACK_SRC" "$PACK_SRC.json" "$PACK_DEST/"
+else
+    echo "==> No sample pack in $PLUGIN_DIR/assets/samples — assuming embedded samples"
+fi
+
 echo "==> Building component package (relocation disabled so paths are fixed)"
 COMPONENT_PKG="$OUT/$PRODUCT-component.pkg"
 COMPONENTS_PLIST="$OUT/components.plist"

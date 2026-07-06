@@ -44,6 +44,12 @@
 #define MyPublisher "DehliMusikk"
 #define ArtRelease BuildDir + "\" + MyDir + "\" + MyTarget + "_artefacts\Release"
 
+; Sample pack: samples ship as a memory-mapped pack, NOT inside the binaries. It installs
+; to {commonappdata} (C:\ProgramData) \DehliMusikk\<product>\, where the engine looks after
+; the per-user dev path. WITHOUT this, a packed plugin is SILENT on a buyer's machine.
+; Plugins without a pack (embedded samples) compile this section away.
+#define PackSrc "..\..\" + MyDir + "\assets\samples\samples.pak"
+
 [Setup]
 AppId={{{#MyAppGuid}}
 AppName={#MyName}
@@ -76,6 +82,12 @@ Source: "{#ArtRelease}\VST3\{#MyName}.vst3\*"; DestDir: "{commoncf64}\VST3\{#MyN
 ; Standalone executable.
 Source: "{#ArtRelease}\Standalone\{#MyName}.exe"; DestDir: "{app}"; \
     Components: standalone; Flags: ignoreversion
+
+; Memory-mapped sample pack (see PackSrc above) — required by both components.
+#if FileExists(PackSrc)
+Source: "{#PackSrc}";      DestDir: "{commonappdata}\DehliMusikk\{#MyName}"; Flags: ignoreversion
+Source: "{#PackSrc}.json"; DestDir: "{commonappdata}\DehliMusikk\{#MyName}"; Flags: ignoreversion
+#endif
 
 [Icons]
 Name: "{group}\{#MyName}";              Filename: "{app}\{#MyName}.exe"; Components: standalone

@@ -38,7 +38,14 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\make_installers.ps1
 ```
 
 Each product's `.pkg` lands in its own `<plugin>/packaging/macos/build/<Target>/`;
-Windows setups land in `packaging/windows/build/`. (The `omni84-notary` profile
+Windows setups land in `packaging/windows/build/`.
+
+**Sample packs ship inside the installers**: both packagers detect
+`<plugin>/assets/samples/samples.pak` and install it system-wide
+(macOS `/Library/Application Support/DehliMusikk/<product>/`, Windows
+`C:\ProgramData\DehliMusikk\<product>\`) — the engine falls back there when the
+per-user dev path is absent. Reconvert BEFORE packaging so the pack is present;
+installers for packed plugins are correspondingly large (the samples live there). (The `omni84-notary` profile
 authenticates your Apple account, so it works for every plugin.)
 
 To package ONE plugin by hand, pass the five identity vars explicitly (they are
