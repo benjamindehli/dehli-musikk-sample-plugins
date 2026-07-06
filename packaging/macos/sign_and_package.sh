@@ -115,9 +115,17 @@ pkgbuild --root "$STAGE" --install-location "/" --component-plist "$COMPONENTS_P
 PRODUCT_PKG="$OUT/$PRODUCT-$VERSION.pkg"
 productbuild --synthesize --package "$COMPONENT_PKG" "$OUT/distribution.xml"
 
+
+# Drop the build intermediates — the inner component pkg, distribution.xml,
+# components.plist and the staged file tree (with sample packs these waste GBs
+# per plugin). Only the shippable product .pkg remains in $OUT.
+cleanup_intermediates() {
+    rm -rf "$STAGE" "$COMPONENT_PKG" "$COMPONENTS_PLIST" "$OUT/distribution.xml"
+}
 if [ "$ADHOC" = "1" ]; then
     echo "==> Building UNSIGNED product installer"
     productbuild --distribution "$OUT/distribution.xml" --package-path "$OUT" "$PRODUCT_PKG"
+    cleanup_intermediates
     echo ""
     echo "✅ Free ad-hoc installer: $PRODUCT_PKG"
     echo "   Not notarized — buyers open it via right-click ▸ Open the first time."
@@ -128,6 +136,7 @@ fi
 echo "==> Building signed product installer with: $DEV_ID_INSTALLER"
 productbuild --distribution "$OUT/distribution.xml" --package-path "$OUT" \
              --sign "$DEV_ID_INSTALLER" "$PRODUCT_PKG"
+cleanup_intermediates
 
 if [ -n "$NOTARY_PROFILE" ]; then
     echo "==> Notarizing (waits for Apple; can take a few minutes)"
