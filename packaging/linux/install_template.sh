@@ -40,6 +40,16 @@ if [ -f "standalone/$PRODUCT" ]; then
     mkdir -p "$BIN_DEST" "$DESKTOP_DEST"
     cp "standalone/$PRODUCT" "$BIN_DEST/"
     chmod +x "$BIN_DEST/$PRODUCT"
+
+    # App icon: lives with the product's data; the .desktop entry uses the
+    # absolute path (works everywhere, no icon-theme cache to refresh).
+    ICON_LINE=""
+    if [ -f "icon.png" ]; then
+        mkdir -p "$DATA_DEST"
+        cp icon.png "$DATA_DEST/icon.png"
+        ICON_LINE="Icon=$DATA_DEST/icon.png"
+    fi
+
     cat > "$DESKTOP_DEST/dehlimusikk-$PRODUCT.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -48,6 +58,7 @@ Comment=Dehli Musikk sample instrument
 Exec="$BIN_DEST/$PRODUCT"
 Categories=AudioVideo;Audio;
 Terminal=false
+$ICON_LINE
 EOF
     echo "  Standalone -> $BIN_DEST/$PRODUCT"
 fi

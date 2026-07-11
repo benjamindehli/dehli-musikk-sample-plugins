@@ -74,6 +74,11 @@ PY
         cp "$PACK" "$PACK.json" "$STAGE/samples/"
     fi
 
+    # App icon (same convention as the bundles: <plugin>/packaging/icon.png) —
+    # install.sh points the .desktop entry at it.
+    ICON="$REPO_ROOT/$PLUGIN_DIR/packaging/icon.png"
+    [ -f "$ICON" ] && cp "$ICON" "$STAGE/icon.png"
+
     sed "s/@PRODUCT@/$PRODUCT/g; s/@VERSION@/$VERSION/g" \
         "$SCRIPT_DIR/install_template.sh" > "$STAGE/install.sh"
     chmod +x "$STAGE/install.sh"
