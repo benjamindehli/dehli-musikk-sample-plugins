@@ -2,6 +2,7 @@
 # The workspace root only versions the orchestration CMake + packaging scripts.
 *-plugin/
 dehli-musikk-sampler-engine/
+dehli-musikk-sampler-plugin-editor/
 ds-plugin-converter/
 
 # ── Build output / scratch / private notes ──────────────────────────────────

@@ -62,3 +62,9 @@ add_subdirectory(subc-plugin)
 
 # Minimal converter path lands in M2 (full CLI in M7).
 add_subdirectory(ds-plugin-converter)
+
+# The authoring app (its own repo, like the plugins) — optional, so a checkout
+# without it still configures.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/dehli-musikk-sampler-plugin-editor/CMakeLists.txt")
+    add_subdirectory(dehli-musikk-sampler-plugin-editor)
+endif()
