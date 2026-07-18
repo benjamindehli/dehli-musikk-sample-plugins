@@ -8,6 +8,17 @@
 
 cmake_minimum_required(VERSION 3.22)
 
+# Universal macOS binaries (Apple Silicon + Intel) — must be set BEFORE project().
+# A single-arch Intel build runs under Rosetta on ARM Macs, which macOS is
+# deprecating ("Support ending for Intel-based apps"). Applies to fresh build dirs
+# only: an existing build dir keeps its cached architectures.
+if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for macOS")
+endif()
+if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
+endif()
+
 project(Omni84Suite VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
