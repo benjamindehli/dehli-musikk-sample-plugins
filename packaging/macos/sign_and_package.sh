@@ -104,11 +104,25 @@ echo "==> Building component package (relocation disabled so paths are fixed)"
 COMPONENT_PKG="$OUT/$PRODUCT-component.pkg"
 COMPONENTS_PLIST="$OUT/components.plist"
 pkgbuild --analyze --root "$STAGE" "$COMPONENTS_PLIST"
-i=0
-while /usr/libexec/PlistBuddy -c "Print :$i:BundleIsRelocatable" "$COMPONENTS_PLIST" >/dev/null 2>&1; do
-    /usr/libexec/PlistBuddy -c "Set :$i:BundleIsRelocatable false" "$COMPONENTS_PLIST"
-    i=$((i + 1))
-done
+# Force BundleIsRelocatable=false on EVERY entry, recursively. The analyze plist
+# nests bundles under ChildBundles, so an indexed top-level loop misses some, and
+# one relocatable bundle is enough for Installer to chase bundle IDs across the
+# system (all our formats share one ID -> the AU "relocates" onto the app and the
+# install fails with "an item with the same name already exists").
+/usr/bin/python3 - "$COMPONENTS_PLIST" <<'PLISTPY'
+import plistlib, sys
+path = sys.argv[1]
+with open(path, 'rb') as fh:
+    entries = plistlib.load(fh)
+def pin(entry):
+    entry['BundleIsRelocatable'] = False
+    for child in entry.get('ChildBundles', []):
+        pin(child)
+for entry in entries:
+    pin(entry)
+with open(path, 'wb') as fh:
+    plistlib.dump(entries, fh)
+PLISTPY
 pkgbuild --root "$STAGE" --install-location "/" --component-plist "$COMPONENTS_PLIST" \
          --identifier "$BUNDLE_ID.pkg" --version "$VERSION" "$COMPONENT_PKG"
 
