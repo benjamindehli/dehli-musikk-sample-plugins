@@ -21,6 +21,13 @@ endif()
 
 project(Omni84Suite VERSION 0.1.0 LANGUAGES C CXX)
 
+# Single-config generators default to NO build type = unoptimized binaries that the
+# packaging scripts then can't find (they expect .../_artefacts/Release). Default to
+# Release; pass -DCMAKE_BUILD_TYPE=Debug explicitly when debugging.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
