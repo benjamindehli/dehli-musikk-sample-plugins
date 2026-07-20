@@ -204,5 +204,8 @@ case "$cmd" in
     package|pkg)    cmd_package "$@" ;;
     tarball|linux)  cmd_tarball "$@" ;;
     help|-h|--help) cmd_help ;;
+    # Hidden helper for shell completion: fast (registry only, no cmake) list of the
+    # plugin names + "all" that commands accept.
+    __plugins) { registry | sed -E 's/\|.*//; s/-plugin$//'; echo all; } ;;
     *) die "unknown command \"$cmd\". Run  ./dmse help" ;;
 esac
