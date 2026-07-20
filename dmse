@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+#
+# dmse — one entry point for the Dehli Musikk sample-plugin workflow.
+#
+# Instead of remembering the exact cmake / converter / packaging incantations,
+# run:  ./dmse <command> [plugin] [options]
+#
+# A "plugin" is matched loosely against its folder, target, or product name, so
+# "omni", "omni-84", "Omni84" and "Omni-84" all resolve to the same plugin. Use
+# "all" to act on every plugin.
+#
+#   ./dmse list                 # every plugin + the name you can pass
+#   ./dmse convert omni-84      # DecentSampler/ -> assets/ (reconvert)
+#   ./dmse build omni-84        # build the Standalone (fast); add "all" for AU+VST3+Standalone
+#   ./dmse run omni-84          # build + launch the Standalone
+#   ./dmse test                 # build + run the engine and converter test suites
+#   ./dmse package omni-84      # sign + notarize the macOS .pkg  (needs signing config)
+#   ./dmse package all          # ... all 13
+#   ./dmse tarball omni-84      # build the Linux .tar.gz
+#   ./dmse configure            # (re)run cmake; also done automatically when needed
+#
+# Build dir defaults to "build" (override with BUILD_DIR=build-linux for Linux).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+BUILD_DIR="${BUILD_DIR:-build}"
+
+# ── pretty output ────────────────────────────────────────────────────────────
+if [ -t 1 ]; then B=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; N=$'\033[0m'
+else B=; DIM=; RED=; GRN=; YEL=; N=; fi
+info() { printf '%s==>%s %s\n' "$B" "$N" "$*"; }
+warn() { printf '%s!!%s %s\n'  "$YEL" "$N" "$*" >&2; }
+die()  { printf '%sError:%s %s\n' "$RED" "$N" "$*" >&2; exit 1; }
+
+# ── plugin registry: "dir|target|product" per line, parsed from each CMakeLists ─
+registry() {
+    local d t p
+    for d in *-plugin; do
+        [ -f "$d/CMakeLists.txt" ] || continue
+        t=$(grep -oE 'dmse_add_plugin\(\s*[A-Za-z0-9_]+' "$d/CMakeLists.txt" | head -1 | sed -E 's/.*\(\s*//')
+        p=$(grep -oE 'PRODUCT_NAME[[:space:]]+"[^"]+"' "$d/CMakeLists.txt" | head -1 | sed -E 's/.*"([^"]+)"/\1/')
+        [ -n "$t" ] && printf '%s|%s|%s\n' "$d" "$t" "$p"
+    done
+}
+
+# Resolve a query to matching "dir|target|product" records (case-insensitive
+# substring against dir/target/product); "all" matches everything.
+resolve() {
+    local query="$1" q rec dir tgt prod hay
+    q=$(printf '%s' "$query" | tr '[:upper:]' '[:lower:]')
+    registry | while IFS='|' read -r dir tgt prod; do
+        if [ "$q" = "all" ]; then printf '%s|%s|%s\n' "$dir" "$tgt" "$prod"; continue; fi
+        hay=$(printf '%s|%s|%s' "$dir" "$tgt" "$prod" | tr '[:upper:]' '[:lower:]')
+        case "$hay" in *"$q"*) printf '%s|%s|%s\n' "$dir" "$tgt" "$prod" ;; esac
+    done
+}
+
+need_plugin() { [ -n "${1:-}" ] || die "this command needs a plugin name (or \"all\"). See: ./dmse list"; }
+
+# Resolve to records or exit with a helpful message.
+records_for() {
+    local recs; recs=$(resolve "$1")
+    [ -n "$recs" ] || die "no plugin matches \"$1\". See: ./dmse list"
+    printf '%s\n' "$recs"
+}
+
+configured() { [ -d "$BUILD_DIR" ] && [ -f "$BUILD_DIR/CMakeCache.txt" ]; }
+ensure_configured() { configured || cmd_configure; }
+
+# Find a freshly built file under the build dir (generator-agnostic).
+find_artifact() { find "$BUILD_DIR" -name "$1" -type f 2>/dev/null | head -1; }
+
+# ── commands ───────────────────────────────────────────────────────────────
+cmd_configure() {
+    info "Configuring CMake in $BUILD_DIR/"
+    cmake -B "$BUILD_DIR"
+}
+
+cmd_list() {
+    printf '%sPlugins%s (pass any of the names below, or a unique part of one):\n\n' "$B" "$N"
+    printf '  %-35s %-32s %s\n' "NAME" "TARGET" "PRODUCT"
+    printf '  %-35s %-32s %s\n' "----" "------" "-------"
+    local dir tgt prod
+    registry | while IFS='|' read -r dir tgt prod; do
+        printf '  %-35s %-32s %s\n' "${dir%-plugin}" "$tgt" "$prod"
+    done
+    printf '\n%sCommands:%s convert · build · run · test · package · tarball · configure · list\n' "$B" "$N"
+}
+
+cmd_convert() {
+    need_plugin "${1:-}"
+    local recs dir tgt prod; recs=$(records_for "$1")   # resolve BEFORE building anything
+    ensure_configured
+    info "Building the converter"
+    cmake --build "$BUILD_DIR" --target dmse_convert
+    local conv; conv=$(find_artifact dmse_convert)
+    [ -n "$conv" ] || die "could not find the built dmse_convert binary"
+    while IFS='|' read -r dir tgt prod; do
+        [ -d "$dir/DecentSampler" ] || { warn "$dir has no DecentSampler/ folder — skipping"; continue; }
+        info "Converting $prod  (DecentSampler to assets)"
+        "$conv" "$dir/DecentSampler" "$dir/assets"
+    done <<< "$recs"
+    info "Done. ${GRN}Reconverted.$N Rebuild the plugin to pick up new assets."
+}
+
+cmd_build() {
+    need_plugin "${1:-}"
+    local kind="${2:-standalone}" suffix
+    case "$(printf '%s' "$kind" | tr '[:upper:]' '[:lower:]')" in
+        all)                suffix=_All ;;
+        au)                 suffix=_AU ;;
+        vst3)               suffix=_VST3 ;;
+        standalone|""|app)  suffix=_Standalone ;;
+        *) die "unknown build kind \"$kind\" (use: standalone | all | au | vst3)" ;;
+    esac
+    local recs dir tgt prod; recs=$(records_for "$1")
+    ensure_configured
+    while IFS='|' read -r dir tgt prod; do
+        info "Building $prod ($tgt$suffix)"
+        cmake --build "$BUILD_DIR" --target "$tgt$suffix"
+    done <<< "$recs"
+    info "${GRN}Build complete.$N"
+}
+
+cmd_run() {
+    need_plugin "${1:-}"
+    local recs; recs=$(records_for "$1")
+    [ "$(printf '%s\n' "$recs" | wc -l)" -eq 1 ] || die "\"$1\" matches more than one plugin — be specific. See: ./dmse list"
+    local dir tgt prod; IFS='|' read -r dir tgt prod <<< "$recs"
+    cmd_build "$1" standalone
+    # The Standalone artefact: an .app on macOS, a bare executable on Linux.
+    local app exe
+    app=$(find "$BUILD_DIR/$dir" -type d -name "$prod.app" 2>/dev/null | head -1)
+    if [ -n "$app" ] && [ "$(uname)" = "Darwin" ]; then
+        info "Launching $prod"
+        open "$app"
+    else
+        exe=$(find "$BUILD_DIR/$dir" -path "*Standalone*" -type f -name "$prod" 2>/dev/null | head -1)
+        [ -n "$exe" ] || die "could not find the built Standalone for $prod"
+        info "Launching $prod"
+        "$exe" &
+    fi
+}
+
+cmd_test() {
+    ensure_configured
+    info "Building test suites"
+    cmake --build "$BUILD_DIR" --target dmse_tests dmse_convert_tests
+    local et ct rc=0
+    et=$(find_artifact dmse_tests); ct=$(find_artifact dmse_convert_tests)
+    info "Engine tests"
+    "$et" || rc=1
+    info "Converter tests"
+    "$ct" || rc=1
+    [ "$rc" -eq 0 ] && info "${GRN}All tests passed.$N" || die "some tests FAILED (see above)"
+}
+
+cmd_package() {
+    need_plugin "${1:-}"
+    [ "$(uname)" = "Darwin" ] || warn "macOS packaging is meant to run on a Mac (codesign/notarytool)."
+    # Signing identities: from packaging/signing.env (gitignored) or the environment.
+    [ -f packaging/signing.env ] && . packaging/signing.env
+    if [ -z "${DEV_ID_APP:-}" ] || [ -z "${DEV_ID_INSTALLER:-}" ] || [ -z "${NOTARY_PROFILE:-}" ]; then
+        die "signing not configured. Create packaging/signing.env with:
+    export DEV_ID_APP=\"Developer ID Application: Benjamin Dehli (TEAMID)\"
+    export DEV_ID_INSTALLER=\"Developer ID Installer: Benjamin Dehli (TEAMID)\"
+    export NOTARY_PROFILE=\"omni84-notary\"
+  (or run  ADHOC=1 ./dmse package $1  for an unsigned test build)"
+    fi
+    local dir tgt prod targets=""
+    while IFS='|' read -r dir tgt prod; do targets="$targets $tgt"; done <<< "$(records_for "$1")"
+    info "Packaging (sign + notarize):$targets"
+    DEV_ID_APP="$DEV_ID_APP" DEV_ID_INSTALLER="$DEV_ID_INSTALLER" NOTARY_PROFILE="$NOTARY_PROFILE" \
+        packaging/macos/package_all.sh $targets
+}
+
+cmd_tarball() {
+    need_plugin "${1:-}"
+    local prev="$BUILD_DIR"; BUILD_DIR="${BUILD_DIR:-build-linux}"
+    # Linux tarballs want a Linux build dir; default to build-linux unless overridden.
+    [ "$prev" != "build" ] || BUILD_DIR=build-linux
+    configured || { info "Configuring Linux build in $BUILD_DIR/"; cmake -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release; }
+    local dir tgt prod targets=""
+    while IFS='|' read -r dir tgt prod; do targets="$targets $tgt"; done <<< "$(records_for "$1")"
+    info "Building Linux tarballs:$targets"
+    BUILD_DIR="$BUILD_DIR" packaging/linux/make_tarballs.sh $targets
+}
+
+cmd_help() {
+    # Print the header comment block (from line 3 until the first non-comment line).
+    awk 'NR>=3 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0"
+}
+
+# ── dispatch ─────────────────────────────────────────────────────────────────
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+    list|ls)        cmd_list "$@" ;;
+    configure|cmake) cmd_configure "$@" ;;
+    convert|reconvert) cmd_convert "$@" ;;
+    build)          cmd_build "$@" ;;
+    run)            cmd_run "$@" ;;
+    test|tests)     cmd_test "$@" ;;
+    package|pkg)    cmd_package "$@" ;;
+    tarball|linux)  cmd_tarball "$@" ;;
+    help|-h|--help) cmd_help ;;
+    *) die "unknown command \"$cmd\". Run  ./dmse help" ;;
+esac
