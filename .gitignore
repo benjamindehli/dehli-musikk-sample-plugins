@@ -23,3 +23,6 @@ packaging/windows/build/
 # ── OS / editor noise ────────────────────────────────────────────────────────
 .DS_Store
 .claude/
+
+# dmse signing config (local secrets)
+packaging/signing.env
