@@ -129,16 +129,20 @@ cmd_run() {
     [ "$(printf '%s\n' "$recs" | wc -l)" -eq 1 ] || die "\"$1\" matches more than one plugin — be specific. See: ./dmse list"
     local dir tgt prod; IFS='|' read -r dir tgt prod <<< "$recs"
     cmd_build "$1" standalone
-    # The Standalone artefact: an .app on macOS, a bare executable on Linux.
+    # Locate the actual Standalone EXECUTABLE (not just any *.app shell — a stale/empty
+    # bundle would make `open` fail with "executable is missing"). On macOS the binary
+    # lives at <prod>.app/Contents/MacOS/<prod>; on Linux it's a bare file.
     local app exe
-    app=$(find "$BUILD_DIR/$dir" -type d -name "$prod.app" 2>/dev/null | head -1)
-    if [ -n "$app" ] && [ "$(uname)" = "Darwin" ]; then
-        info "Launching $prod"
+    if [ "$(uname)" = "Darwin" ]; then
+        exe=$(find "$BUILD_DIR/$dir" -type f -path "*Standalone/$prod.app/Contents/MacOS/$prod" 2>/dev/null | head -1)
+        [ -n "$exe" ] || die "no built Standalone .app executable for $prod under $BUILD_DIR/$dir (try: ./dmse build $1)"
+        app="${exe%/Contents/MacOS/*}"
+        info "Launching $app"
         open "$app"
     else
-        exe=$(find "$BUILD_DIR/$dir" -path "*Standalone*" -type f -name "$prod" 2>/dev/null | head -1)
-        [ -n "$exe" ] || die "could not find the built Standalone for $prod"
-        info "Launching $prod"
+        exe=$(find "$BUILD_DIR/$dir" -type f -path "*Standalone/$prod" 2>/dev/null | head -1)
+        [ -n "$exe" ] || die "no built Standalone executable for $prod under $BUILD_DIR/$dir (try: ./dmse build $1)"
+        info "Launching $exe"
         "$exe" &
     fi
 }
