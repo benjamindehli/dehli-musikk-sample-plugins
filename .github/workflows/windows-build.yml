@@ -58,7 +58,10 @@ jobs:
           done
 
       - name: Configure (MSVC, x64)
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        # Don't pin the VS generator version — the runner's Visual Studio moves over time
+        # (newer than 2022 now). Let CMake auto-detect the installed VS; -A x64 keeps it a
+        # multi-config VS generator, so artefacts still land under Release\ as the installer expects.
+        run: cmake -B build -A x64
 
       - name: Build all products (Release)
         run: cmake --build build --config Release --parallel

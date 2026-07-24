@@ -168,7 +168,8 @@ and aren't in CI.
 
 ### 3b. Build + package (all plugins, or a subset)
 ```bat
-cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake -B build -A x64
+:: (-A x64 auto-detects your installed Visual Studio; pass -G "Visual Studio NN YYYY" to pin it)
 :: FIRST regenerate each plugin's assets\samples\samples.pak from your private
 :: libraries (run the converter per plugin) — without the pack the installer builds
 :: fine but the installed plugin is SILENT.
