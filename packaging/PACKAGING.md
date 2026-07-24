@@ -10,11 +10,13 @@ plugin*). There are two macOS paths:
   macOS installers are built this way.
 - **Path A — Free (ad-hoc):** no Apple Developer account. Ships an unsigned `.pkg`;
   buyers do a one-time right-click ▸ Open. Fallback only.
-- **Windows:** an Inno Setup installer for the VST3 + Standalone (Authenticode
-  signing optional, also free-without-cert).
+- **Windows:** an **unsigned** Inno Setup installer for the VST3 + Standalone (no
+  code-signing cert, by choice → a one-time SmartScreen warning; see §3).
 
-> Build host: macOS packaging happens on your Mac; Windows on a Windows machine.
-> The Linux dev sandbox can't sign.
+> Build host: macOS packaging happens on your Mac. The Windows build is validated in
+> CI (cloud Windows runners), but the shippable installers are built on a real Windows
+> machine because the sample packs are private and not in CI. The Linux dev sandbox
+> can't sign or build Windows.
 
 ## Packaging any plugin — or all of them
 
@@ -151,31 +153,51 @@ spctl --assess --type install --verbose=2 Omni-84-<version>.pkg   # "accepted"
 
 ## 3. Windows
 
-### 3a. Prerequisites
-- Build toolchain: Visual Studio (MSVC) + CMake.
-- [Inno Setup 6](https://jrsoftware.org/isinfo.php) for the installer (`ISCC.exe`).
-- *(Optional)* an Authenticode code-signing certificate (OV/EV) + `signtool`.
+The installers are **unsigned** (no code-signing certificate, by choice), so buyers get
+a one-time SmartScreen warning — see the buyer note in §3c. The Windows *build* is
+validated in CI on every run (`.github/workflows/windows-build.yml`, cloud Windows
+runners: it compiles every plugin and builds the installers unsigned + sample-free, just
+to prove the tooling). The **shippable** installers — the ones that actually contain the
+sample packs — are built on a real Windows machine, because the packs are private content
+and aren't in CI.
 
-### 3b. Build + package
+### 3a. Prerequisites (on the Windows machine)
+- Visual Studio 2022 (MSVC) + CMake.
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php) — `ISCC.exe` on PATH (or set `$env:ISCC`).
+- Your private DecentSampler libraries, so the sample packs can be regenerated.
+
+### 3b. Build + package (all plugins, or a subset)
 ```bat
 cmake -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --target Omni84_All --config Release
-ISCC /DMyVersion=0.1.0 packaging\windows\installer.iss
+:: FIRST regenerate each plugin's assets\samples\samples.pak from your private
+:: libraries (run the converter per plugin) — without the pack the installer builds
+:: fine but the installed plugin is SILENT.
+powershell -ExecutionPolicy Bypass -File packaging\windows\make_installers.ps1
+:: subset:  ... make_installers.ps1 StyloPoly SubC
 ```
-Output: `omni-84-plugin\packaging\windows\build\Omni-84-0.1.0-Setup.exe`.
-Installs the VST3 to `C:\Program Files\Common Files\VST3` and the Standalone to
-`C:\Program Files\DehliMusikk\Omni-84`.
+The driver reads `build\dmse_plugins\<Target>.json`, builds each `<Target>_All`, and
+compiles the shared `installer.iss` with the right per-product defines. Setups land in
+`packaging\windows\build\<name>-<version>-Setup.exe`. Each installs the VST3 to
+`C:\Program Files\Common Files\VST3`, the Standalone to `C:\Program Files\DehliMusikk\<name>`,
+and the sample pack to `C:\ProgramData\DehliMusikk\<name>\` (where the engine looks).
 
-### 3c. (Optional) Authenticode signing
-Sign the Standalone `.exe` *before* compiling the installer, then the installer:
-```bat
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 ^
-  /a "build\omni-84-plugin\Omni84_artefacts\Release\Standalone\Omni-84.exe"
-:: ...build the installer, then...
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 ^
-  /a "omni-84-plugin\packaging\windows\build\Omni-84-0.1.0-Setup.exe"
-```
-Without a cert, Windows SmartScreen will warn until the download earns reputation.
+### 3c. Unsigned — buyer note
+> **Windows:** the installer isn't code-signed, so SmartScreen shows "Windows protected
+> your PC" the first time. Click **More info ▸ Run anyway** — you only do this once.
+
+Publishing a **SHA-256 checksum** next to each download lets buyers verify the file is
+intact. (If you ever reconsider, an OV/EV Authenticode cert + `signtool` on the `.exe`
+and the `Setup.exe` removes the warning — but that's the only thing a cert buys here.)
+
+### 3d. Windows release checklist
+1. CI green (build + installer tooling) on the release commit.
+2. On the Windows machine: reconvert every plugin from the private libraries so each
+   `assets\samples\samples.pak` exists (else the installed plugin is silent).
+3. `make_installers.ps1` → one `*-Setup.exe` per plugin.
+4. **Test — the part CI cannot do:** install; load the VST3 **and** Standalone in at
+   least two DAWs (e.g. Reaper + one of Ableton / FL / Cubase); confirm each plugin finds
+   its samples and sounds right, the UI renders, and MIDI + the on-screen keyboard play.
+5. Publish the installers with their SHA-256 checksums and the §3c buyer note.
 
 ---
 

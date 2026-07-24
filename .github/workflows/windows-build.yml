@@ -8,10 +8,12 @@
 #   * Authenticode-sign     — needs a code-signing cert (add as a secret later).
 # Those become follow-up stages once the cert + a way to feed CI the sample packs are sorted.
 #
-# ASSUMPTION TO VERIFY: the sibling repos are public at github.com/benjamindehli/<folder>.
-# If any is private, give the clone step a token (secrets.GITHUB_TOKEN won't reach other repos —
-# use a PAT in a secret). The root CMake add_subdirectory()s all 13 plugins, so all must be
-# present to configure; hence every repo is cloned into place to mirror the local workspace.
+# The sibling repos are public under github.com/benjamindehli. Their repo names DIFFER from
+# the local folder names the root CMake add_subdirectory()s (no "-plugin" suffix, different
+# casing), so each is cloned INTO the expected folder (see the repo->dest map below). The
+# engine + converter repo names are assumed to match their folders — adjust if not.
+# If any repo is private, give the clone step a PAT secret (the default GITHUB_TOKEN can't
+# reach other repos). All 13 plugins must be present to configure.
 
 name: Windows build
 
@@ -31,15 +33,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          repos="dehli-musikk-sampler-engine ds-plugin-converter \
-                 omni-84-plugin maskintrommer-plugin midnight-wurli-plugin \
-                 elektrisk-salmesykkel-plugin 4-track-glockenspiel-plugin \
-                 4-track-toy-piano-plugin 4-track-music-box-plugin edb-orgel-plugin \
-                 strykebrett-plugin voltage-controlled-cassette-organ-plugin \
-                 lo-fi-tape-piano-plugin stylopoly-plugin subc-plugin"
-          for r in $repos; do
-            echo "== cloning $r =="
-            git clone --depth 1 "https://github.com/benjamindehli/$r.git" "$r"
+          # "<github-repo> <dest-folder>" — dest must match the root CMake add_subdirectory().
+          repos=(
+            "dehli-musikk-sampler-engine dehli-musikk-sampler-engine"
+            "ds-plugin-converter ds-plugin-converter"
+            "Omni-84 omni-84-plugin"
+            "MaskinTrommer maskintrommer-plugin"
+            "MidnightWurli midnight-wurli-plugin"
+            "ElektriskSalmesykkel elektrisk-salmesykkel-plugin"
+            "4-track-glockenspiel 4-track-glockenspiel-plugin"
+            "4-track-toy-piano 4-track-toy-piano-plugin"
+            "4-track-music-box 4-track-music-box-plugin"
+            "EDB-Orgel edb-orgel-plugin"
+            "Strykebrett strykebrett-plugin"
+            "VoltageControlledCassetteOrgan voltage-controlled-cassette-organ-plugin"
+            "lo-fi-tape-piano lo-fi-tape-piano-plugin"
+            "StyloPoly stylopoly-plugin"
+            "SubC subc-plugin"
+          )
+          for pair in "${repos[@]}"; do
+            set -- $pair
+            echo "== cloning $1 -> $2 =="
+            git clone --depth 1 "https://github.com/benjamindehli/$1.git" "$2"
           done
 
       - name: Configure (MSVC, x64)
@@ -67,4 +82,27 @@ jobs:
         with:
           name: windows-plugins-unsigned-nosamples
           path: out/
+          if-no-files-found: error
+
+      # --- Installer tooling validation ------------------------------------------------
+      # Build the Inno Setup installers to prove installer.iss + make_installers.ps1 work
+      # on Windows. These installers are UNSIGNED (no cert, by choice → SmartScreen warns)
+      # and SAMPLE-FREE (the pack isn't in CI, so #if FileExists(PackSrc) compiles the pack
+      # section away → the installed plugin is silent). This validates the packaging
+      # pipeline only; a shippable installer is built on a real machine with the samples
+      # present (see packaging/PACKAGING.md).
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installers (unsigned, sample-free — tooling check)
+        shell: pwsh
+        env:
+          ISCC: 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+        run: ./packaging/windows/make_installers.ps1
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers-unsigned-nosamples
+          path: packaging/windows/build/*-Setup.exe
           if-no-files-found: error
