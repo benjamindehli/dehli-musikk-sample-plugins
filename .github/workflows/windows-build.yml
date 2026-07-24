@@ -58,13 +58,18 @@ jobs:
           done
 
       - name: Configure (MSVC, x64)
-        # Don't pin the VS generator version — the runner's Visual Studio moves over time
-        # (newer than 2022 now). Let CMake auto-detect the installed VS; -A x64 keeps it a
-        # multi-config VS generator, so artefacts still land under Release\ as the installer expects.
-        run: cmake -B build -A x64
+        # Build into a SHORT root (C:\b). The runner checks out to
+        # D:\a\<repo>\<repo>\, and JUCE's VST3 post-build (juce_vst3_helper LoadLibraryW
+        # for moduleinfo.json, plus the copy) walks a path that repeats the product name
+        # (…\Voltage Controlled Cassette Organ.vst3\Contents\x86_64-win\…vst3) and tips
+        # past Windows MAX_PATH (260) for the longest-named plugin. A short build root
+        # keeps every artefact path under the limit. Also: no pinned VS generator — let
+        # CMake auto-detect (the runner's VS is newer than 2022); -A keeps it multi-config
+        # so artefacts stay under Release\.
+        run: cmake -B C:\b -A x64
 
       - name: Build all products (Release)
-        run: cmake --build build --config Release --parallel
+        run: cmake --build C:\b --config Release --parallel
 
       - name: Collect artefacts
         shell: bash
@@ -73,7 +78,7 @@ jobs:
           mkdir -p out
           # VST3 bundles + Standalone .exe for every plugin, keeping the product-name layout.
           for d in *-plugin; do
-            art="build/$d"
+            art="C:/b/$d"
             [ -d "$art" ] || continue
             find "$art" -type d -name "*.vst3" -path "*/Release/VST3/*" -prune -exec cp -r {} out/ \; || true
             find "$art" -type f -name "*.exe"  -path "*/Release/Standalone/*"    -exec cp    {} out/ \; || true
@@ -101,6 +106,7 @@ jobs:
         shell: pwsh
         env:
           ISCC: 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          BUILD_DIR: 'C:\b'          # same short build root as above (MAX_PATH)
         run: ./packaging/windows/make_installers.ps1
 
       - name: Upload installers

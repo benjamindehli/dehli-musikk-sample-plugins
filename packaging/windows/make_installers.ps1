@@ -43,6 +43,7 @@ foreach ($file in $metas) {
         "/DMyTarget=$($m.target)" `
         "/DMyAppGuid=$($m.windowsAppGuid)" `
         "/DMyVersion=$($m.version)" `
+        "/DBuildDir=$buildDir" `
         (Join-Path $scriptDir "installer.iss")
     if ($LASTEXITCODE -ne 0) { Write-Error "ISCC failed for $($m.target)" }
 

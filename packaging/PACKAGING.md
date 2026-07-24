@@ -165,6 +165,10 @@ and aren't in CI.
 - Visual Studio 2022 (MSVC) + CMake.
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php) — `ISCC.exe` on PATH (or set `$env:ISCC`).
 - Your private DecentSampler libraries, so the sample packs can be regenerated.
+- **Check out / build from a short path** (e.g. `C:\dev`), or set a short build dir
+  (`BUILD_DIR=C:\b`). JUCE's VST3 post-build repeats the product name deep in the path
+  (`…\Voltage Controlled Cassette Organ.vst3\Contents\x86_64-win\…vst3`); from a long
+  root it trips Windows' 260-char MAX_PATH on the longest-named plugin (VCCO).
 
 ### 3b. Build + package (all plugins, or a subset)
 ```bat
