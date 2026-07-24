@@ -1,0 +1,70 @@
+# Windows build (cloud) — compile + link every plugin on MSVC without a local Windows machine.
+#
+# FIRST STAGE ONLY: this validates that the C++ actually builds and links on Windows and
+# uploads the raw VST3 + Standalone artefacts. It deliberately does NOT yet:
+#   * bundle samples        — samples.pak is paid content, gitignored, so the artefacts here
+#                             are SILENT (they load, render UI, accept MIDI, but play nothing).
+#   * build the installer   — packaging/windows/make_installers.ps1 needs Inno Setup + the pack.
+#   * Authenticode-sign     — needs a code-signing cert (add as a secret later).
+# Those become follow-up stages once the cert + a way to feed CI the sample packs are sorted.
+#
+# ASSUMPTION TO VERIFY: the sibling repos are public at github.com/benjamindehli/<folder>.
+# If any is private, give the clone step a token (secrets.GITHUB_TOKEN won't reach other repos —
+# use a PAT in a secret). The root CMake add_subdirectory()s all 13 plugins, so all must be
+# present to configure; hence every repo is cloned into place to mirror the local workspace.
+
+name: Windows build
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab
+  push:
+    tags: [ 'win-*' ]       # or on a win-* tag (e.g. win-2.0.0)
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout orchestration root
+        uses: actions/checkout@v4
+
+      - name: Fetch sibling repos (engine + converter + plugins)
+        shell: bash
+        run: |
+          set -euo pipefail
+          repos="dehli-musikk-sampler-engine ds-plugin-converter \
+                 omni-84-plugin maskintrommer-plugin midnight-wurli-plugin \
+                 elektrisk-salmesykkel-plugin 4-track-glockenspiel-plugin \
+                 4-track-toy-piano-plugin 4-track-music-box-plugin edb-orgel-plugin \
+                 strykebrett-plugin voltage-controlled-cassette-organ-plugin \
+                 lo-fi-tape-piano-plugin stylopoly-plugin subc-plugin"
+          for r in $repos; do
+            echo "== cloning $r =="
+            git clone --depth 1 "https://github.com/benjamindehli/$r.git" "$r"
+          done
+
+      - name: Configure (MSVC, x64)
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build all products (Release)
+        run: cmake --build build --config Release --parallel
+
+      - name: Collect artefacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          # VST3 bundles + Standalone .exe for every plugin, keeping the product-name layout.
+          for d in *-plugin; do
+            art="build/$d"
+            [ -d "$art" ] || continue
+            find "$art" -type d -name "*.vst3" -path "*/Release/VST3/*" -prune -exec cp -r {} out/ \; || true
+            find "$art" -type f -name "*.exe"  -path "*/Release/Standalone/*"    -exec cp    {} out/ \; || true
+          done
+          ls -R out
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-plugins-unsigned-nosamples
+          path: out/
+          if-no-files-found: error
