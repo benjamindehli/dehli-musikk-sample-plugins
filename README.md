@@ -24,15 +24,15 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ```
 ./dmse list                 # every plugin and the name you can pass
 ./dmse convert omni-84      # DecentSampler/ into assets/ (reconvert)
-./dmse build omni-84        # build the Standalone (fast); add "all" for AU, VST3 and Standalone
+./dmse build omni-84        # build the Standalone (fast), or "all" for AU + VST3 + Standalone
 ./dmse run omni-84          # build and launch the Standalone
 ./dmse test                 # build and run the engine and converter test suites
 ./dmse package omni-84      # sign and notarize the macOS .pkg (needs signing config)
 ./dmse tarball omni-84      # build the Linux .tar.gz
-./dmse configure            # (re)run cmake; also done automatically when needed
+./dmse configure            # (re)run cmake, also done automatically when needed
 ```
 
-The build directory defaults to `build`. Override it with the `BUILD_DIR` environment variable, for example `BUILD_DIR=build-linux` for a Linux build. Shell completion for commands, plugin names and build kinds is in `packaging/dmse-completion.sh`; source it from your shell profile.
+The build directory defaults to `build`. Override it with the `BUILD_DIR` environment variable, for example `BUILD_DIR=build-linux` for a Linux build. Shell completion for commands, plugin names and build kinds is in `packaging/dmse-completion.sh`. Source it from your shell profile.
 
 ## Building without the CLI
 
