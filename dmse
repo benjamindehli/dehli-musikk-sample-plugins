@@ -12,6 +12,7 @@
 #   ./dmse list                 # every plugin + the name you can pass
 #   ./dmse convert omni-84      # DecentSampler/ -> assets/ (reconvert)
 #   ./dmse build omni-84        # build the Standalone (fast); add "all" for AU+VST3+Standalone
+#   ./dmse rebuild omni-84      # targeted CLEAN rebuild (use when a change didn't show up)
 #   ./dmse run omni-84          # build + launch the Standalone
 #   ./dmse test                 # build + run the engine and converter test suites
 #   ./dmse package omni-84      # sign + notarize the macOS .pkg  (needs signing config)
@@ -85,7 +86,7 @@ cmd_list() {
     registry | while IFS='|' read -r dir tgt prod; do
         printf '  %-35s %-32s %s\n' "${dir%-plugin}" "$tgt" "$prod"
     done
-    printf '\n%sCommands:%s convert · build · run · test · package · tarball · configure · list\n' "$B" "$N"
+    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · configure · list\n' "$B" "$N"
 }
 
 cmd_convert() {
@@ -121,6 +122,25 @@ cmd_build() {
         cmake --build "$BUILD_DIR" --target "$tgt$suffix"
     done <<< "$recs"
     info "${GRN}Build complete.$N"
+}
+
+cmd_rebuild() {
+    need_plugin "${1:-}"
+    local recs dir tgt prod; recs=$(records_for "$1")
+    ensure_configured
+    # Targeted clean rebuild: wipe ONLY this plugin's + the shared engine's build subdirs,
+    # so their objects and generated BinaryData are forced to regenerate. This defeats stale
+    # incremental builds (timestamp skew can make cmake think things are up to date when they
+    # aren't — a change silently doesn't show up) WITHOUT the full-tree "rm -rf build" that
+    # also recompiles JUCE and every other plugin. Reach for this when a change (recipe,
+    # assets, or engine) doesn't appear after a normal `build`.
+    while IFS='|' read -r dir tgt prod; do
+        [ -d "$BUILD_DIR/$dir" ] && { info "Clean ${DIM}$BUILD_DIR/$dir$N"; rm -rf "${BUILD_DIR:?}/$dir"; }
+    done <<< "$recs"
+    local eng="$BUILD_DIR/dehli-musikk-sampler-engine"
+    [ -d "$eng" ] && { info "Clean ${DIM}$eng$N (shared engine)"; rm -rf "$eng"; }
+    cmd_configure   # regenerate the removed build rules (fast — no compile)
+    cmd_build "$1" "${2:-standalone}"
 }
 
 cmd_run() {
@@ -203,6 +223,7 @@ case "$cmd" in
     configure|cmake) cmd_configure "$@" ;;
     convert|reconvert) cmd_convert "$@" ;;
     build)          cmd_build "$@" ;;
+    rebuild)        cmd_rebuild "$@" ;;
     run)            cmd_run "$@" ;;
     test|tests)     cmd_test "$@" ;;
     package|pkg)    cmd_package "$@" ;;
