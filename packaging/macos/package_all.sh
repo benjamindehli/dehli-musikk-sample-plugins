@@ -28,6 +28,16 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$REPO_ROOT/build}"
 META_DIR="$BUILD_DIR/dmse_plugins"
 
+# Refresh the configure BEFORE reading the metadata, so a version bump (or any other
+# CMakeLists change) is reflected in the version/identity we read below. Without this,
+# the per-target build step further down triggers the reconfigure instead, which
+# rewrites the metadata only AFTER this loop already captured the stale version — so a
+# freshly bumped plugin would package under its previous version. Only when the dir is
+# already configured (otherwise fall through to the error below).
+if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+    cmake -B "$BUILD_DIR" >/dev/null
+fi
+
 if [ ! -d "$META_DIR" ] || ! ls "$META_DIR"/*.json >/dev/null 2>&1; then
     echo "ERROR: no plugin metadata in $META_DIR — configure first:  cmake -B \"$BUILD_DIR\""
     exit 1
