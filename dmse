@@ -15,6 +15,8 @@
 #   ./dmse rebuild omni-84      # targeted CLEAN rebuild (use when a change didn't show up)
 #   ./dmse run omni-84          # build + launch the Standalone
 #   ./dmse test                 # build + run the engine and converter test suites
+#   ./dmse format               # reformat all C++ to LLVM style (clang-format)
+#   ./dmse format --check       # ... report unformatted files instead, exit 1 if any
 #   ./dmse package omni-84      # sign + notarize the macOS .pkg  (needs signing config)
 #   ./dmse package all          # ... all 13
 #   ./dmse tarball omni-84      # build the Linux .tar.gz
@@ -180,6 +182,56 @@ cmd_test() {
     [ "$rc" -eq 0 ] && info "${GRN}All tests passed.$N" || die "some tests FAILED (see above)"
 }
 
+cmd_format() {
+    local check=0
+    case "${1:-}" in
+        --check) check=1 ;;
+        "")      ;;
+        *)       die "unknown option \"$1\". Usage: ./dmse format [--check]" ;;
+    esac
+
+    local cf c
+    for c in "${CLANG_FORMAT:-}" clang-format /opt/homebrew/opt/llvm/bin/clang-format \
+             /usr/local/opt/llvm/bin/clang-format; do
+        [ -n "$c" ] && command -v "$c" >/dev/null 2>&1 && { cf="$c"; break; }
+    done
+    [ -n "${cf:-}" ] || die "clang-format not found. Install it with:
+    brew install clang-format         # macOS
+    sudo apt install clang-format     # Debian/Ubuntu
+  (or set CLANG_FORMAT=/path/to/clang-format)"
+
+    # Every sub-repo carrying a .clang-format; all its tracked C++ gets formatted.
+    local repo rc=0 total=0 n
+    for repo in */; do
+        repo="${repo%/}"
+        [ -f "$repo/.clang-format" ] || continue
+        n=$(git -C "$repo" ls-files '*.cpp' '*.h' '*.hpp' '*.mm' '*.cc' | wc -l | tr -d ' ')
+        [ "$n" -gt 0 ] || continue
+        total=$((total + n))
+        if [ "$check" -eq 1 ]; then
+            info "Checking $repo ($n files)"
+            git -C "$repo" ls-files -z '*.cpp' '*.h' '*.hpp' '*.mm' '*.cc' \
+                | (cd "$repo" && xargs -0 "$cf" --dry-run -Werror) || rc=1
+        else
+            info "Formatting $repo ($n files)"
+            # Twice: clang-format occasionally needs a second pass to settle
+            # trailing-comment alignment, and a half-formatted tree fails --check.
+            git -C "$repo" ls-files -z '*.cpp' '*.h' '*.hpp' '*.mm' '*.cc' \
+                | (cd "$repo" && xargs -0 "$cf" -i)
+            git -C "$repo" ls-files -z '*.cpp' '*.h' '*.hpp' '*.mm' '*.cc' \
+                | (cd "$repo" && xargs -0 "$cf" -i)
+        fi
+    done
+
+    [ "$total" -gt 0 ] || die "no repos with a .clang-format found (run from the workspace root)"
+    if [ "$check" -eq 1 ]; then
+        [ "$rc" -eq 0 ] && info "${GRN}All $total files are LLVM-formatted.$N" \
+                        || die "some files need formatting — run  ./dmse format"
+    else
+        info "${GRN}Formatted $total files.$N Review with  git diff"
+    fi
+}
+
 cmd_package() {
     need_plugin "${1:-}"
     [ "$(uname)" = "Darwin" ] || warn "macOS packaging is meant to run on a Mac (codesign/notarytool)."
@@ -226,6 +278,7 @@ case "$cmd" in
     rebuild)        cmd_rebuild "$@" ;;
     run)            cmd_run "$@" ;;
     test|tests)     cmd_test "$@" ;;
+    format|fmt)     cmd_format "$@" ;;
     package|pkg)    cmd_package "$@" ;;
     tarball|linux)  cmd_tarball "$@" ;;
     help|-h|--help) cmd_help ;;

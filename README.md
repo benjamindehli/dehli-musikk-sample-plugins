@@ -27,6 +27,7 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ./dmse build omni-84        # build the Standalone (fast), or "all" for AU + VST3 + Standalone
 ./dmse run omni-84          # build and launch the Standalone
 ./dmse test                 # build and run the engine and converter test suites
+./dmse format               # reformat all C++ to LLVM style, or --check to just report
 ./dmse package omni-84      # sign and notarize the macOS .pkg (needs signing config)
 ./dmse tarball omni-84      # build the Linux .tar.gz
 ./dmse configure            # (re)run cmake, also done automatically when needed
