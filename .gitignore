@@ -23,6 +23,8 @@ packaging/windows/build/
 # ── OS / editor noise ────────────────────────────────────────────────────────
 .DS_Store
 .claude/
+__pycache__/
+*.pyc
 
 # dmse signing config (local secrets)
 packaging/signing.env

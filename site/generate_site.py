@@ -38,6 +38,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import urllib.parse
 from pathlib import Path
 
 SITE_DIR = Path(__file__).resolve().parent
@@ -774,6 +775,22 @@ def lookup_extra(data, names):
 
 CURRENCY_SYMBOLS = {"USD": "$", "EUR": "€", "GBP": "£"}
 
+# Octicons, inlined so the page stays self contained (16x16 viewBox).
+ICON_STAR = (
+    "M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97."
+    "719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L."
+    "818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
+)
+ICON_GITHUB = (
+    "M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13."
+    "01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2."
+    "36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03"
+    "-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.6"
+    "4 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27."
+    "38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55."
+    "38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
+)
+
 
 def normalize_price(value, currency_fallback: str = "USD"):
     """Accept either {"minimum": ..., "currency": ..., "payWhatYouWant": ...} from
@@ -861,6 +878,8 @@ def _read_meta_uncached(plugin_dir: Path):
         match = re.search(r"github\.com[:/]+([^/]+)/(.+?)(?:\.git)?$", url)
         if match:
             owner, repo = match.group(1), match.group(2)
+            meta["owner"] = owner
+            meta["slug"] = f"{owner}/{repo}"
             meta["repo"] = f"https://github.com/{owner}/{repo}"
             meta["pages"] = f"https://{owner}.github.io/{repo}/"
     except (subprocess.CalledProcessError, OSError):
@@ -1128,6 +1147,8 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         hero=hero,
         icon=icon,
         repo=meta.get("repo"),
+        owner=meta.get("owner"),
+        slug=meta.get("slug"),
         pages=pages,
         store_url=store_url,
         price=price,
@@ -1352,6 +1373,26 @@ def page_html(**ctx) -> str:
             '<meta property="og:video:type" content="text/html">\n'
             '<link rel="preconnect" href="https://i.ytimg.com">'
         )
+    # Star and follow both need a signed-in GitHub session, so send visitors
+    # through the login page and straight back to where they were headed.
+    github_cta = ""
+    if ctx.get("slug") and ctx.get("owner"):
+        def login_link(path: str, icon: str, label: str) -> str:
+            target = urllib.parse.quote("/" + path, safe="")
+            return (
+                f'<a class="btn btn-sm btn-ghost" href="https://github.com/login?return_to={target}"'
+                ' target="_blank" rel="noopener">'
+                f'<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
+                f'<path d="{icon}"/></svg>{esc(label)}</a>'
+            )
+
+        github_cta = (
+            '<div class="github-cta">'
+            + login_link(ctx["slug"], ICON_STAR, "Star the repo")
+            + login_link(ctx["owner"], ICON_GITHUB, f"Follow @{ctx['owner']}")
+            + "</div>"
+        )
+
     price_line = ""
     cta_label = f"Get {ctx['title']}"
     if ctx.get("price"):
@@ -1419,6 +1460,7 @@ def page_html(**ctx) -> str:
     {repo_link}
   </div>
   {price_line}
+  {github_cta}
   <div class="intro-more">{ctx["intro_rest"]}</div>
 </div>
 
