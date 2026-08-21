@@ -449,6 +449,20 @@ def make_table(rows):
         caption = body[0][0] if body and body[0] else match.group(1)
         return {"type": "figure", "src": match.group(2), "alt": match.group(1), "caption": caption}
 
+    # Several images side by side with a row of captions under them (EDB-Orgel's
+    # tabs). As a table this is far wider than the column; as figures it isn't.
+    if header and len(header) > 1 and all(IMG_RE.fullmatch(c) for c in header):
+        captions = body[0] if body else []
+        figures = []
+        for n, cell in enumerate(header):
+            match = IMG_RE.fullmatch(cell)
+            figures.append({
+                "src": match.group(2),
+                "alt": match.group(1),
+                "caption": captions[n] if n < len(captions) else match.group(1),
+            })
+        return {"type": "figure-row", "items": figures}
+
     # "Equipment used": a name column and an image column.
     if body and any(IMG_RE.search(cell) for row in body for cell in row):
         items = []
@@ -533,6 +547,18 @@ class Renderer:
         if kind == "figure":
             return self.figure(block["src"], block["alt"], block["caption"])
 
+        if kind == "figure-row":
+            # A row is a set — dropping the one that happens to be the hero image
+            # would leave the reader comparing two of three tabs.
+            figures = [
+                self.figure(i["src"], i["alt"], i["caption"], allow_skip=False)
+                for i in block["items"]
+            ]
+            figures = [f for f in figures if f]
+            if not figures:
+                return ""
+            return f'<div class="figure-row">{"".join(figures)}</div>'
+
         if kind == "gear":
             return self.gear(block["items"])
 
@@ -549,11 +575,11 @@ class Renderer:
         out.append("</ul>")
         return "\n".join(out)
 
-    def figure(self, src: str, alt: str, caption: str) -> str:
+    def figure(self, src: str, alt: str, caption: str, allow_skip: bool = True) -> str:
         entry = self.images.register(src)
         if not entry:
             return f"<p>{self.inline(caption or alt)}</p>"
-        if src.strip() in self.skip_images:
+        if allow_skip and src.strip() in self.skip_images:
             return ""  # already shown as the hero image
         size = entry["size"] or (0, 0)
         dims = f' width="{size[0]}" height="{size[1]}"' if size[0] else ""
@@ -995,6 +1021,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         meta.setdefault("sameAs", extra.get("sameAs") or [])
         meta.setdefault("video", extra.get("video"))
         meta.setdefault("price", extra.get("price"))
+        meta.setdefault("heroImage", extra.get("heroImage"))
     else:
         warn(f"{plugin_dir.name}: no entry in {PLUGIN_DATA.name} for \"{title}\"")
 
