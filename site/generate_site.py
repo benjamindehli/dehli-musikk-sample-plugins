@@ -49,8 +49,14 @@ DEFAULT_STORE_URL = "https://store.dehlimusikk.no/"
 DECENT_SAMPLER_URL = "https://www.decentsamples.com/product/decent-sampler-plugin/"
 
 MAX_IMAGE_WIDTH = 1200
+THUMB_WIDTH = 400
 PHOTO_QUALITY = 80
 ICON_SIZE = 256
+
+# Store links, sameAs profiles and demo videos for every product, shared by all
+# pages. Per-plugin site.json still wins over anything in here.
+PLUGIN_DATA = SITE_DIR / "plugin-data.json"
+YOUTUBE_ID_RE = re.compile(r"(?:v=|/shorts/|youtu\.be/|/embed/)([A-Za-z0-9_-]{6,})")
 
 # Screenshots at or below this width are control close-ups, not full-GUI shots:
 # shown at their natural size instead of stretched across the column.
@@ -288,14 +294,28 @@ class Images:
             self.by_src[key] = None
             return None
 
-        stem = re.sub(r"[^a-z0-9]+", "-", f"{source.parent.name}-{source.stem}".lower()).strip("-")
+        entry = self.register_file(source, f"{source.parent.name}-{source.stem}")
+        self.by_src[key] = entry
+        return entry
+
+    def register_file(self, source: Path, name: str, max_width: int = MAX_IMAGE_WIDTH):
+        """Register any file on disk, including one from a sibling plugin repo."""
+        key = f"{source}@{max_width}"
+        if key in self.by_src:
+            return self.by_src[key]
+
+        stem = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
         # Without an encoder the file is copied verbatim, so keep its real type.
         ext = self.encoder.ext if self.encoder.tool else source.suffix.lstrip(".").lower()
         entry = {
             "url": f"img/{stem}.{ext}",
             "path": self.out_dir / "img" / f"{stem}.{ext}",
             "source": source,
-            "size": scaled_size(image_size(source), MAX_IMAGE_WIDTH),
+            "max_width": max_width,
+            # Without an encoder nothing is downscaled, so don't claim it was.
+            "size": scaled_size(image_size(source), max_width)
+            if self.encoder.tool
+            else image_size(source),
         }
         self.by_src[key] = entry
         return entry
@@ -306,7 +326,9 @@ class Images:
         for entry in self.by_src.values():
             if not entry:
                 continue
-            encoded = self.encoder.photo(entry["source"], entry["path"], MAX_IMAGE_WIDTH)
+            encoded = self.encoder.photo(
+                entry["source"], entry["path"], entry.get("max_width", MAX_IMAGE_WIDTH)
+            )
             self.written.add(entry["path"].name)
             # A copy-as-is fallback is not downscaled, so re-read what was written.
             if not encoded or not entry["size"]:
@@ -699,7 +721,56 @@ def section_subheadings(section):
 
 # ── plugin metadata ──────────────────────────────────────────────────────────
 
+def match_key(text: str) -> str:
+    """Normalize a product name so "MaskinTrommer", "Maskintrommer" and the
+    directory "maskintrommer-plugin" all resolve to the same entry."""
+    return re.sub(r"[^a-z0-9]+", "", text.lower().replace("-plugin", ""))
+
+
+def load_plugin_data(path: Path):
+    if not path.is_file():
+        warn(f"{path.name} not found — store links, sameAs and videos will be omitted")
+        return {}
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        die(f"{path}: {exc}")
+    return {match_key(entry["title"]): entry for entry in entries if entry.get("title")}
+
+
+def lookup_extra(data, names):
+    for name in names:
+        entry = data.get(match_key(name))
+        if entry:
+            return entry
+    return {}
+
+
+def youtube_id(url: str):
+    match = YOUTUBE_ID_RE.search(url or "")
+    return match.group(1) if match else None
+
+
+def pick_language(value, language: str = "en"):
+    """The data file carries {"en": ..., "no": ...}; these pages are English."""
+    if isinstance(value, dict):
+        return value.get(language) or next(iter(value.values()), "")
+    return value or ""
+
+
+_META_CACHE = {}
+
+
 def read_meta(plugin_dir: Path):
+    cached = _META_CACHE.get(plugin_dir)
+    if cached is not None:
+        return dict(cached)
+    meta = _read_meta_uncached(plugin_dir)
+    _META_CACHE[plugin_dir] = dict(meta)
+    return meta
+
+
+def _read_meta_uncached(plugin_dir: Path):
     meta = {"product": plugin_dir.name.replace("-plugin", ""), "version": None, "repo": None}
 
     cmake = plugin_dir / "CMakeLists.txt"
@@ -755,17 +826,107 @@ def pick_hero(plugin_dir: Path, meta):
     return f"/Screenshots/{best.name}" if best else None
 
 
+def read_title(plugin_dir: Path) -> str:
+    for line in (plugin_dir / "README.md").read_text(encoding="utf-8").split("\n"):
+        heading = HEADING_RE.match(line)
+        if heading and len(heading.group(1)) == 1:
+            return heading.group(2)
+    return plugin_dir.name.replace("-plugin", "")
+
+
+def sibling_plugins(current: Path, data):
+    """The other instruments in the workspace, for the cross-link strip.
+
+    Internal links between the product pages are worth real SEO, and they only
+    need each sibling's own git remote to work out its Pages URL.
+    """
+    siblings = []
+    for plugin_dir in sorted(ROOT.glob("*-plugin")):
+        if plugin_dir.resolve() == current.resolve() or not (plugin_dir / "README.md").is_file():
+            continue
+        meta = read_meta(plugin_dir)
+        if not meta.get("pages"):
+            continue
+        title = read_title(plugin_dir)
+        meta.update(lookup_extra(data, [title, meta["product"], plugin_dir.name]))
+        hero = pick_hero(plugin_dir, meta)
+        siblings.append({
+            "title": title,
+            "pages": meta["pages"],
+            "name": plugin_dir.name,
+            "hero": plugin_dir / hero.lstrip("/") if hero else None,
+        })
+    return siblings
+
+
+def render_more(siblings, images: Images) -> str:
+    if not siblings:
+        return ""
+    cards = []
+    for sibling in siblings:
+        thumb = ""
+        if sibling["hero"] and sibling["hero"].is_file():
+            entry = images.register_file(sibling["hero"], f"more-{sibling['name']}", THUMB_WIDTH)
+            size = entry["size"] or (0, 0)
+            dims = f' width="{size[0]}" height="{size[1]}"' if size[0] else ""
+            thumb = f'<img src="{entry["url"]}" alt="" loading="lazy"{dims}>'
+        cards.append(
+            f'<li><a href="{sibling["pages"]}">{thumb}'
+            f'<span class="label">{html.escape(sibling["title"])}</span></a></li>'
+        )
+    return (
+        '<aside class="more" aria-labelledby="more-title">'
+        '<h2 id="more-title">More instruments from Dehli Musikk</h2>'
+        f'<ul class="more-grid">{"".join(cards)}</ul></aside>'
+    )
+
+
+def render_video(video, title: str) -> str:
+    """A click-to-load facade: no YouTube request until the reader asks for it."""
+    ident = youtube_id(video.get("contentUrl", ""))
+    if not ident:
+        return ""
+    name = pick_language(video.get("name")) or f"{title} demo"
+    description = pick_language(video.get("description"))
+    watch = video.get("contentUrl")
+    label = html.escape(f"Play video: {name}", quote=True)
+    return (
+        '<section id="demo-video">'
+        '<h2><a class="anchor" href="#demo-video" aria-hidden="true">#</a>Video</h2>'
+        + (f"<p>{html.escape(description)}</p>" if description else "")
+        + f'<div class="video" data-youtube="{ident}">'
+        f'<button class="video-play" type="button" aria-label="{label}">'
+        f'<img src="https://i.ytimg.com/vi/{ident}/hqdefault.jpg" alt="" loading="lazy" '
+        'width="480" height="360">'
+        '<span class="play" aria-hidden="true"></span></button></div>'
+        f'<p class="video-caption">{html.escape(name)} — '
+        f'<a href="{html.escape(watch, quote=True)}" target="_blank" rel="noopener">'
+        "Watch on YouTube</a></p></section>"
+    )
+
+
 # ── page assembly ────────────────────────────────────────────────────────────
 
-def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder) -> None:
+def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> None:
     readme = plugin_dir / "README.md"
     if not readme.is_file():
         die(f"{plugin_dir.name}: no README.md")
 
+    data = data or {}
     meta = read_meta(plugin_dir)
     blocks, refs = parse_markdown(readme.read_text(encoding="utf-8"))
     title, intro, sections = organize(blocks)
     title = title or meta["product"]
+
+    # Shared product data, unless the plugin's own site.json already said otherwise
+    # (read_meta has merged site.json into meta already).
+    extra = lookup_extra(data, [title, meta["product"], plugin_dir.name])
+    if extra:
+        meta.setdefault("storeUrl", (extra.get("link") or {}).get("url"))
+        meta.setdefault("sameAs", extra.get("sameAs") or [])
+        meta.setdefault("video", extra.get("video"))
+    else:
+        warn(f"{plugin_dir.name}: no entry in {PLUGIN_DATA.name} for \"{title}\"")
 
     # The intro sits above the fold: either the blocks before the first heading,
     # or an explicit Introduction/Description section.
@@ -807,7 +968,9 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder) -> None:
     if icon_src.is_file():
         icon = "img/icon.png"
 
-    body = []
+    video_html = render_video(meta["video"], title) if meta.get("video") else ""
+
+    body = [video_html] if video_html else []
     for section in sections:
         content = (
             split_releases(section, renderer)
@@ -820,7 +983,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder) -> None:
             f'{renderer.inline(section["title"])}</h2>{content}</section>'
         )
 
-    toc = []
+    toc = ['<li><a href="#demo-video">Video</a></li>'] if video_html else []
     for section in sections:
         subs = "" if section is releases else "".join(
             f'<li><a href="#{s["slug"]}">{html.escape(s["text"])}</a></li>'
@@ -832,8 +995,9 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder) -> None:
             + "</li>"
         )
 
-    store_url = meta.get("storeUrl", DEFAULT_STORE_URL)
+    store_url = meta.get("storeUrl") or DEFAULT_STORE_URL
     description = meta.get("description") or seo_description(title, tagline)
+    more_html = render_more(sibling_plugins(plugin_dir, data), images)
 
     # Images are written before the HTML so fallback dimensions are known.
     images.emit()
@@ -864,10 +1028,13 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder) -> None:
         store_url=store_url,
         toc="".join(toc),
         body="\n".join(body),
+        more=more_html,
+        video=meta.get("video"),
         json_ld=structured_data(
             title=title, description=description, pages=pages, store_url=store_url,
             version=version, date=date, systems=systems, hero=hero, images=images,
             repo=meta.get("repo"), price=meta.get("price"), currency=meta.get("currency", "USD"),
+            same_as=meta.get("sameAs") or [], video=meta.get("video"),
         ),
     )
     (out_dir / "index.html").write_text(html_text, encoding="utf-8")
@@ -913,10 +1080,11 @@ def structured_data(**ctx) -> str:
     if not ctx["pages"]:
         return ""
     pages = ctx["pages"]
+    # The store product page is the canonical identity of the instrument, so the
+    # page, the store and the website all describe one and the same entity.
     entity = {
-        "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "@id": pages + "#software",
+        "@id": ctx["store_url"] or (pages + "#software"),
         "name": ctx["title"],
         "description": ctx["description"],
         "url": pages,
@@ -940,8 +1108,11 @@ def structured_data(**ctx) -> str:
     ]
     if shots:
         entity["screenshot"] = shots
-    if ctx["repo"]:
-        entity["sameAs"] = [ctx["repo"]]
+    same_as = list(ctx.get("same_as") or [])
+    if ctx["repo"] and ctx["repo"] not in same_as:
+        same_as.append(ctx["repo"])
+    if same_as:
+        entity["sameAs"] = same_as
     if ctx["price"] is not None:
         entity["offers"] = {
             "@type": "Offer",
@@ -957,7 +1128,35 @@ def structured_data(**ctx) -> str:
             "url": ctx["store_url"],
             "availability": "https://schema.org/InStock",
         }
-    return json.dumps(entity, indent=2, ensure_ascii=False)
+
+    graph = [entity]
+    video = video_entity(ctx.get("video"), pages, entity["@id"], ctx["title"])
+    if video:
+        entity["subjectOf"] = {"@id": video["@id"]}
+        graph.append(video)
+    return json.dumps({"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False)
+
+
+def video_entity(video, pages: str, software_id: str, title: str):
+    """A VideoObject for the demo, tied back to the instrument it demonstrates."""
+    if not video:
+        return None
+    ident = youtube_id(video.get("contentUrl", ""))
+    if not ident:
+        return None
+    entity = {
+        "@type": "VideoObject",
+        "@id": pages + "#video",
+        "name": pick_language(video.get("name")) or f"{title} demo",
+        "description": pick_language(video.get("description")) or f"A demonstration of {title}.",
+        "thumbnailUrl": [f"https://i.ytimg.com/vi/{ident}/hqdefault.jpg"],
+        "contentUrl": video.get("contentUrl"),
+        "embedUrl": f"https://www.youtube.com/embed/{ident}",
+        "about": {"@id": software_id},
+    }
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", video.get("uploadDate") or ""):
+        entity["uploadDate"] = video["uploadDate"]
+    return entity
 
 
 def sitemap_xml(pages: str, lastmod) -> str:
@@ -1034,6 +1233,15 @@ def page_html(**ctx) -> str:
     json_ld = (
         f'<script type="application/ld+json">\n{ctx["json_ld"]}\n</script>' if ctx.get("json_ld") else ""
     )
+    og_video = ""
+    ident = youtube_id((ctx.get("video") or {}).get("contentUrl", ""))
+    if ident:
+        og_video = (
+            f'<meta property="og:video" content="https://www.youtube.com/watch?v={ident}">\n'
+            f'<meta property="og:video:url" content="https://www.youtube.com/embed/{ident}">\n'
+            '<meta property="og:video:type" content="text/html">\n'
+            '<link rel="preconnect" href="https://i.ytimg.com">'
+        )
     repo_link = (
         f'<a class="btn" href="{esc(ctx["repo"])}" target="_blank" rel="noopener">View on GitHub</a>'
         if ctx["repo"]
@@ -1065,6 +1273,7 @@ def page_html(**ctx) -> str:
 <meta property="og:description" content="{esc(ctx["description"])}">
 {og_url}
 {og_image}
+{og_video}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{esc(ctx["page_title"])}">
 <meta name="twitter:description" content="{esc(ctx["description"])}">
@@ -1106,6 +1315,8 @@ def page_html(**ctx) -> str:
   </main>
 </div>
 
+{ctx["more"]}
+
 <footer>
   {topbar_icon}
   <nav>
@@ -1119,6 +1330,24 @@ def page_html(**ctx) -> str:
 </footer>
 
 <script>
+// Click to load: nothing is requested from YouTube until the reader asks for it.
+(function () {{
+  document.querySelectorAll('.video[data-youtube]').forEach(function (box) {{
+    var button = box.querySelector('.video-play');
+    if (!button) return;
+    button.addEventListener('click', function () {{
+      var frame = document.createElement('iframe');
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + box.dataset.youtube +
+                  '?autoplay=1&rel=0';
+      frame.title = button.getAttribute('aria-label') || 'Video';
+      frame.allow = 'accelerometer; autoplay; encrypted-media; picture-in-picture';
+      frame.allowFullscreen = true;
+      frame.loading = 'lazy';
+      box.replaceChildren(frame);
+    }});
+  }});
+}})();
+
 // Highlight the section the reader is in, in the sidebar.
 (function () {{
   var links = {{}};
@@ -1157,17 +1386,22 @@ def main(argv=None) -> int:
         help="screenshot encoding (default: webp when an encoder is available, else jpeg)",
     )
     parser.add_argument("--out", default="docs", help="output folder inside each plugin repo (default: docs)")
+    parser.add_argument(
+        "--data", default=str(PLUGIN_DATA),
+        help="shared product data: store links, sameAs profiles and demo videos",
+    )
     args = parser.parse_args(argv)
 
     encoder = Encoder(args.format)
     info(f"Encoding screenshots as {encoder.describe()}")
+    data = load_plugin_data(Path(args.data))
 
     for name in args.plugins:
         plugin_dir = (ROOT / name).resolve() if not Path(name).is_absolute() else Path(name)
         if not plugin_dir.is_dir():
             die(f"no such plugin directory: {name}")
         out_dir = plugin_dir / args.out
-        build_page(plugin_dir, out_dir, encoder)
+        build_page(plugin_dir, out_dir, encoder, data)
         info(f"{plugin_dir.name} → {out_dir.relative_to(ROOT)}/index.html")
     return 0
 

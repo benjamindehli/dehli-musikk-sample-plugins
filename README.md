@@ -58,15 +58,17 @@ Every plugin repository publishes a product page through GitHub Pages, for examp
 ./dmse site all             # all 13
 ```
 
-`site/generate_site.py` reads the plugin's `README.md` and renders it as a designed page: a hero with the icon, the latest version and a link to the store, the largest screenshot as the lead image, the full control documentation with every screenshot, the equipment gallery, and the release history as a collapsible list. The README stays the single source of truth, so a page is refreshed by editing the README and running the command again. Never hand edit a `docs/` folder, it is overwritten on the next run.
+`site/generate_site.py` reads the plugin's `README.md` and renders it as a designed page: a hero with the icon, the latest version and a link to the store, the largest screenshot as the lead image, the demo video, the full control documentation with every screenshot, the equipment gallery, the release history as a collapsible list, and a strip of links to the other twelve instruments. The README stays the single source of truth, so a page is refreshed by editing the README and running the command again. Never hand edit a `docs/` folder, it is overwritten on the next run.
+
+What a README cannot express lives in `site/plugin-data.json`, one entry per product, matched to the plugin by title: the store link, the `sameAs` profiles (Gumroad, Cylex, Pianobook, YouTube) and the demo video. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play, and it is also published as a `VideoObject` tied back to the instrument.
 
 Screenshots are re encoded for the web at up to 1200 pixels wide, as WebP when `cwebp` or Pillow is available and otherwise as JPEG through `sips`, which ships with macOS. A page and all its images come to a few hundred kilobytes rather than the ten megabytes the raw screenshots would cost. The originals in `Screenshots/` are never touched.
 
-The pages are written for search engines: a unique title and description per product, canonical and Open Graph tags, schema.org `SoftwareApplication` data with the version, operating systems and screenshots, a sitemap, lazily loaded images with explicit dimensions and a preloaded hero image.
+The pages are written for search engines: a unique title and description per product, canonical, Open Graph and video tags, schema.org `SoftwareApplication` and `VideoObject` data with the version, operating systems, screenshots and `sameAs` profiles, a sitemap, internal links between all thirteen products, lazily loaded images with explicit dimensions and a preloaded hero image.
 
 To publish a plugin for the first time, commit its `docs/` folder, then in the repository settings under Pages choose "Deploy from a branch", branch `main`, folder `/docs`.
 
-Anything the README cannot express goes in an optional `site.json` in the plugin repository root. Every key is optional:
+A single plugin can override the shared data with an optional `site.json` in its repository root. Every key is optional and takes precedence over `site/plugin-data.json`:
 
 ```json
 {
@@ -78,7 +80,7 @@ Anything the README cannot express goes in an optional `site.json` in the plugin
 }
 ```
 
-A per product `storeUrl` sends buyers straight to the product instead of the store front page, and a price completes the schema.org offer. Note that a project page's `robots.txt` only applies at the domain root, so the generated sitemaps are best submitted to Search Console directly, or listed from the `benjamindehli.github.io` user site.
+Adding a price completes the schema.org offer, which is the one field the rich result still lacks. Note that a project page's `robots.txt` only applies at the domain root, so the generated sitemaps are best submitted to Search Console directly, or listed from the `benjamindehli.github.io` user site.
 
 ## Packaging and distribution
 

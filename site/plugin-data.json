@@ -1,0 +1,315 @@
+[
+    {
+        "title": "MaskinTrommer",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/maskintrommer"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/maskintrommer",
+            "https://dehlimusikk.gumroad.com/l/maskintrommer",
+            "https://www.cylex.no/bedrift-produkt/maskintrommer_266081.html",
+            "https://www.youtube.com/watch?v=XWSHCTEfhZE"
+        ],
+        "video": {
+            "name": {
+                "en": "Drum Machine plugin preset for Decent Sampler (MaskinTrommer)",
+                "no": "Trommemaskin-plugin preset for Decent Sampler (MaskinTrommer)"
+            },
+            "description": {
+                "en": "A demonstration of the MaskinTrommer library for Decent Sampler.",
+                "no": "En demonstrasjon av MaskinTrommer-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2026-03-01",
+            "contentUrl": "https://www.youtube.com/watch?v=XWSHCTEfhZE"
+        }
+    },
+    {
+        "title": "Midnight Wurli",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/midnight-wurli"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/midnight-wurli",
+            "https://dehlimusikk.gumroad.com/l/midnight-wurli",
+            "https://www.cylex.no/bedrift-produkt/midnight+wurli_266062.html",
+            "https://www.youtube.com/watch?v=LB-YDVqQh7s",
+            "https://www.youtube.com/shorts/nCFiLi4mdtE"
+        ],
+        "video": {
+            "name": {
+                "en": "Wurlitzer Electric Piano plugin preset for Decent Sampler (Midnight Wurli)",
+                "no": "Wurlitzer elektrisk piano plugin preset for Decent Sampler (Midnight Wurli)"
+            },
+            "description": {
+                "en": "A demonstration of the Midnight Wurli library for Decent Sampler.",
+                "no": "En demonstrasjon av Midnight Wurli-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2025-08-13",
+            "contentUrl": "https://www.youtube.com/watch?v=LB-YDVqQh7s"
+        }
+    },
+    {
+        "title": "EDB-Orgel",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/edb-orgel"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/edb-orgel",
+            "https://dehlimusikk.gumroad.com/l/edb-orgel",
+            "https://www.cylex.no/bedrift-produkt/edb-orgel_223146.html",
+            "https://www.youtube.com/watch?v=hZNESXfthg0"
+        ],
+        "video": {
+            "name": {
+                "en": "EDB-Orgel for Decent Sampler",
+                "no": "EDB-Orgel for Decent Sampler"
+            },
+            "description": {
+                "en": "A demonstration of the EDB-Orgel library for Decent Sampler.",
+                "no": "En demonstrasjon av EDB-Orgel-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2024-08-08",
+            "contentUrl": "https://www.youtube.com/watch?v=hZNESXfthg0"
+        }
+    },
+    {
+        "title": "SubC",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/subc"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/subc",
+            "https://dehlimusikk.gumroad.com/l/subc",
+            "https://www.cylex.no/bedrift-produkt/subc_223145.html",
+            "https://www.youtube.com/watch?v=yTpCq-qIIdY",
+            "https://www.pianobook.co.uk/packs/subc/"
+        ],
+        "video": {
+            "name": {
+                "en": "Sub bass sample library (SubC)",
+                "no": "Sub-bass lydbibliotek (SubC)"
+            },
+            "description": {
+                "en": "A demonstration of the SubC library for Decent Sampler.",
+                "no": "En demonstrasjon av SubC-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2024-03-31",
+            "contentUrl": "https://www.youtube.com/watch?v=yTpCq-qIIdY"
+        }
+    },
+    {
+        "title": "4-track Toy Piano",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/4-track-toy-piano"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/4-track-toy-piano",
+            "https://dehlimusikk.gumroad.com/l/4-track-toy-piano",
+            "https://www.cylex.no/bedrift-produkt/4-track-toy-piano_223144.html",
+            "https://www.youtube.com/watch?v=igZ9TCwIJpw"
+        ],
+        "video": {
+            "name": {
+                "en": "4-track Toy Piano - Sound Examples",
+                "no": "4-track Toy Piano - Lydeksempler"
+            },
+            "description": {
+                "en": "A demonstration of the 4-track Toy Piano library for Decent Sampler.",
+                "no": "En demonstrasjon av 4-track Toy Piano-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2024-03-17",
+            "contentUrl": "https://www.youtube.com/watch?v=igZ9TCwIJpw"
+        }
+    },
+    {
+        "title": "Elektrisk Salmesykkel",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/elektrisk-salmesykkel"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/elektrisk-salmesykkel",
+            "https://dehlimusikk.gumroad.com/l/elektrisk-salmesykkel",
+            "https://www.cylex.no/bedrift-produkt/elektrisk-salmesykkel_223143.html",
+            "https://www.youtube.com/watch?v=MWzlTejTHSw"
+        ],
+        "video": {
+            "name": {
+                "en": "Electric harmonium sample plugin (Elektrisk Salmesykkel)",
+                "no": "Elektrisk harmonium lydbibliotek plugin (Elektrisk Salmesykkel)"
+            },
+            "description": {
+                "en": "A demonstration of the Elektrisk Salmesykkel library for Decent Sampler.",
+                "no": "En demonstrasjon av Elektrisk Salmesykkel-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2024-02-11",
+            "contentUrl": "https://www.youtube.com/watch?v=MWzlTejTHSw"
+        }
+    },
+    {
+        "title": "StyloPoly",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/stylopoly"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/stylopoly",
+            "https://dehlimusikk.gumroad.com/l/stylopoly",
+            "https://www.cylex.no/bedrift-produkt/stylopoly_223142.html",
+            "https://www.youtube.com/watch?v=H_-g8gjE0EM",
+            "https://www.pianobook.co.uk/packs/stylopoly/"
+        ],
+        "video": {
+            "name": {
+                "en": "Stylophone sample plugin (StyloPoly)",
+                "no": "Stylophone lydbibliotek plugin (StyloPoly)"
+            },
+            "description": {
+                "en": "A demonstration of the StyloPoly library for Decent Sampler.",
+                "no": "En demonstrasjon av StyloPoly-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2024-01-07",
+            "contentUrl": "https://www.youtube.com/watch?v=H_-g8gjE0EM"
+        }
+    },
+    {
+        "title": "Strykebrett",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/strykebrett"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/strykebrett",
+            "https://dehlimusikk.gumroad.com/l/strykebrett",
+            "https://www.cylex.no/bedrift-produkt/strykebrett_223141.html",
+            "https://www.youtube.com/watch?v=GyRbgZarPm4",
+            "https://www.pianobook.co.uk/packs/strykebrett/"
+        ],
+        "video": {
+            "name": {
+                "en": "String synthesizer sample plugin (Strykebrett)",
+                "no": "Stryke-synthesizer lydbibliotek plugin (Strykebrett)"
+            },
+            "description": {
+                "en": "A demonstration of the Strykebrett library for Decent Sampler.",
+                "no": "En demonstrasjon av Strykebrett-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2023-10-16",
+            "contentUrl": "https://www.youtube.com/watch?v=GyRbgZarPm4"
+        }
+    },
+    {
+        "title": "4-track Glockenspiel",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/4-track-glockenspiel"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/4-track-glockenspiel",
+            "https://dehlimusikk.gumroad.com/l/4-track-glockenspiel",
+            "https://www.cylex.no/bedrift-produkt/4-track+glockenspiel_223140.html",
+            "https://www.youtube.com/watch?v=8g-XCw91hSc"
+        ],
+        "video": {
+            "name": {
+                "en": "4-track Glockenspiel - Sound Examples",
+                "no": "4-track Glockenspiel - Lydeksempler"
+            },
+            "description": {
+                "en": "A demonstration of the 4-track Glockenspiel library for Decent Sampler.",
+                "no": "En demonstrasjon av 4-track Glockenspiel-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2023-08-19",
+            "contentUrl": "https://www.youtube.com/watch?v=8g-XCw91hSc"
+        }
+    },
+    {
+        "title": "4-track Music Box",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/4-track-music-box"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/4-track-music-box",
+            "https://dehlimusikk.gumroad.com/l/4-track-music-box",
+            "https://www.cylex.no/bedrift-produkt/4-track+music+box_223139.html",
+            "https://www.youtube.com/watch?v=uBB4RNMrEXc"
+        ],
+        "video": {
+            "name": {
+                "en": "Masquerade (music box version) from The Phantom of the Opera",
+                "no": "Masquerade (spilledåse-versjon) fra The Phantom of the Opera"
+            },
+            "description": {
+                "en": "A demonstration of the 4-track Music Box library for Decent Sampler.",
+                "no": "En demonstrasjon av 4-track Music Box-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2023-07-30",
+            "contentUrl": "https://www.youtube.com/watch?v=uBB4RNMrEXc"
+        }
+    },
+    {
+        "title": "Voltage Controlled Cassette Organ",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/voltage-controlled-cassette-organ"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/voltage-controlled-cassette-organ",
+            "https://dehlimusikk.gumroad.com/l/voltage-controlled-cassette-organ",
+            "https://www.cylex.no/bedrift-produkt/voltage+controlled+cassette+organ_223138.html",
+            "https://www.youtube.com/watch?v=0h4CQ6jh6yM",
+            "https://www.pianobook.co.uk/packs/voltage-controlled-cassette-organ/"
+        ],
+        "video": {
+            "name": {
+                "en": "Voltage Controlled Cassette Organ - Sound Examples",
+                "no": "Voltage Controlled Cassette Organ - Lydeksempler"
+            },
+            "description": {
+                "en": "A demonstration of the Voltage Controlled Cassette Organ library for Decent Sampler.",
+                "no": "En demonstrasjon av Voltage Controlled Cassette Organ-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2023-06-26",
+            "contentUrl": "https://www.youtube.com/watch?v=0h4CQ6jh6yM"
+        }
+    },
+    {
+        "title": "Omni-84",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/omni-84"
+        },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/omni-84",
+            "https://dehlimusikk.gumroad.com/l/omni-84",
+            "https://www.cylex.no/bedrift-produkt/omni-84_223137.html",
+            "https://www.youtube.com/watch?v=dAxy1PFxv3U",
+            "https://www.youtube.com/watch?v=qGyaNVAG-js",
+            "https://www.pianobook.co.uk/packs/omni-84/"
+        ],
+        "video": {
+            "name": {
+                "en": "Free Omnichord sample plugin (Omni-84)",
+                "no": "Gratis Omnichord lydbibliotek plugin (Omni-84)"
+            },
+            "description": {
+                "en": "A demonstration of the Omni-84 library for Decent Sampler.",
+                "no": "En demonstrasjon av Omni-84-biblioteket for Decent Sampler."
+            },
+            "uploadDate": "2023-04-06",
+            "contentUrl": "https://www.youtube.com/watch?v=dAxy1PFxv3U"
+        }
+    },
+    {
+        "title": "Lo-fi Tape Piano",
+        "link": {
+            "url": "https://store.dehlimusikk.no/l/lo-fi-tape-piano"
+        },
+        "video": {
+            "name": {
+                "en": "Lo-fi Tape Piano (sample pack)",
+                "no": "Lo-fi Tape Piano (sample pack)"
+            },
+            "description": {
+                "en": "A demonstration of the Lo-fi Tape Piano library for Decent Sampler and EXS24.",
+                "no": "En demonstrasjon av Lo-fi Tape Piano-biblioteket for Decent Sampler og EXS24."
+            },
+            "uploadDate": "2020-05-25",
+            "contentUrl": "https://www.youtube.com/watch?v=2k1QpuwCZzk"
+        }
+    }
+]
