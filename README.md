@@ -60,7 +60,13 @@ Every plugin repository publishes a product page through GitHub Pages, for examp
 
 `site/generate_site.py` reads the plugin's `README.md` and renders it as a designed page: a hero with the icon, the latest version and a link to the store, the largest screenshot as the lead image, the demo video, the full control documentation with every screenshot, the equipment gallery, the release history as a collapsible list, and a strip of links to the other twelve instruments. The README stays the single source of truth, so a page is refreshed by editing the README and running the command again. Never hand edit a `docs/` folder, it is overwritten on the next run.
 
-What a README cannot express lives in `site/plugin-data.json`, one entry per product, matched to the plugin by title: the store link, the `sameAs` profiles (Gumroad, Cylex, Pianobook, YouTube) and the demo video. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play, and it is also published as a `VideoObject` tied back to the instrument.
+What a README cannot express lives in `site/plugin-data.json`, one entry per product, matched to the plugin by title: the store link, the price, the `sameAs` profiles (Gumroad, Cylex, Pianobook, YouTube) and the demo video. The store sells pay what you want, so a price is written as a minimum:
+
+```json
+"price": { "minimum": "9.99", "currency": "USD", "payWhatYouWant": true }
+```
+
+which the page shows as "From $9.99" and publishes as both `offers.price` and a `minPrice`, so the figure is not read as a fixed one. A minimum of `0` renders as "Free · pay what you want" and adds `isAccessibleForFree`. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play, and it is also published as a `VideoObject` tied back to the instrument.
 
 Screenshots are re encoded for the web at up to 1200 pixels wide, as WebP when `cwebp` or Pillow is available and otherwise as JPEG through `sips`, which ships with macOS. A page and all its images come to a few hundred kilobytes rather than the ten megabytes the raw screenshots would cost. The originals in `Screenshots/` are never touched.
 
@@ -80,7 +86,7 @@ A single plugin can override the shared data with an optional `site.json` in its
 }
 ```
 
-Adding a price completes the schema.org offer, which is the one field the rich result still lacks. Note that a project page's `robots.txt` only applies at the domain root, so the generated sitemaps are best submitted to Search Console directly, or listed from the `benjamindehli.github.io` user site.
+A `price` here may be a plain number or the same object as in the shared data. Note that a project page's `robots.txt` only applies at the domain root, so the generated sitemaps are best submitted to Search Console directly, or listed from the `benjamindehli.github.io` user site.
 
 ## Packaging and distribution
 

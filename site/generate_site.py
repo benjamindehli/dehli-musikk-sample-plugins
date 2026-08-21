@@ -746,6 +746,50 @@ def lookup_extra(data, names):
     return {}
 
 
+CURRENCY_SYMBOLS = {"USD": "$", "EUR": "€", "GBP": "£"}
+
+
+def normalize_price(value, currency_fallback: str = "USD"):
+    """Accept either {"minimum": ..., "currency": ..., "payWhatYouWant": ...} from
+    the shared data file or a bare price from a plugin's site.json."""
+    if value is None or value == "":
+        return None
+    if not isinstance(value, dict):
+        return {"minimum": str(value), "currency": currency_fallback, "payWhatYouWant": False}
+    minimum = value.get("minimum", value.get("price"))
+    if minimum is None:
+        return None
+    return {
+        "minimum": str(minimum),
+        "currency": value.get("currency", currency_fallback),
+        "payWhatYouWant": bool(value.get("payWhatYouWant")),
+    }
+
+
+def format_price(price) -> str:
+    amount = price["minimum"]
+    if float(amount) == 0:
+        return "Free"
+    symbol = CURRENCY_SYMBOLS.get(price["currency"])
+    return f"{symbol}{amount}" if symbol else f"{amount} {price['currency']}"
+
+
+def price_badge(price) -> str:
+    """The store sells pay what you want, so a flat price would be a lie."""
+    if float(price["minimum"]) == 0:
+        return "Free" if not price["payWhatYouWant"] else "Free · pay what you want"
+    formatted = format_price(price)
+    return f"From {formatted}" if price["payWhatYouWant"] else formatted
+
+
+def price_note(price) -> str:
+    if float(price["minimum"]) == 0:
+        return "Free — pay what you want." if price["payWhatYouWant"] else "Free."
+    if price["payWhatYouWant"]:
+        return f"Pay what you want, from {format_price(price)}."
+    return format_price(price)
+
+
 def youtube_id(url: str):
     match = YOUTUBE_ID_RE.search(url or "")
     return match.group(1) if match else None
@@ -925,6 +969,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         meta.setdefault("storeUrl", (extra.get("link") or {}).get("url"))
         meta.setdefault("sameAs", extra.get("sameAs") or [])
         meta.setdefault("video", extra.get("video"))
+        meta.setdefault("price", extra.get("price"))
     else:
         warn(f"{plugin_dir.name}: no entry in {PLUGIN_DATA.name} for \"{title}\"")
 
@@ -996,6 +1041,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         )
 
     store_url = meta.get("storeUrl") or DEFAULT_STORE_URL
+    price = normalize_price(meta.get("price"), meta.get("currency", "USD"))
     description = meta.get("description") or seo_description(title, tagline)
     more_html = render_more(sibling_plugins(plugin_dir, data), images)
 
@@ -1026,6 +1072,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         repo=meta.get("repo"),
         pages=pages,
         store_url=store_url,
+        price=price,
         toc="".join(toc),
         body="\n".join(body),
         more=more_html,
@@ -1033,7 +1080,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         json_ld=structured_data(
             title=title, description=description, pages=pages, store_url=store_url,
             version=version, date=date, systems=systems, hero=hero, images=images,
-            repo=meta.get("repo"), price=meta.get("price"), currency=meta.get("currency", "USD"),
+            repo=meta.get("repo"), price=price,
             same_as=meta.get("sameAs") or [], video=meta.get("video"),
         ),
     )
@@ -1113,21 +1160,24 @@ def structured_data(**ctx) -> str:
         same_as.append(ctx["repo"])
     if same_as:
         entity["sameAs"] = same_as
-    if ctx["price"] is not None:
-        entity["offers"] = {
-            "@type": "Offer",
-            "url": ctx["store_url"],
-            "price": str(ctx["price"]),
-            "priceCurrency": ctx["currency"],
-            "availability": "https://schema.org/InStock",
-        }
-    else:
-        # No price in site.json: still tell crawlers where it is sold.
-        entity["offers"] = {
-            "@type": "Offer",
-            "url": ctx["store_url"],
-            "availability": "https://schema.org/InStock",
-        }
+    price = ctx.get("price")
+    offer = {"@type": "Offer", "url": ctx["store_url"], "availability": "https://schema.org/InStock"}
+    if price:
+        # Google reads offers.price; the store is pay what you want, so the
+        # minimum is also published as a minPrice so the figure is not read as
+        # a fixed one.
+        offer["price"] = price["minimum"]
+        offer["priceCurrency"] = price["currency"]
+        if price["payWhatYouWant"]:
+            offer["priceSpecification"] = {
+                "@type": "PriceSpecification",
+                "minPrice": price["minimum"],
+                "priceCurrency": price["currency"],
+                "description": price_note(price).rstrip("."),
+            }
+        if float(price["minimum"]) == 0:
+            entity["isAccessibleForFree"] = True
+    entity["offers"] = offer
 
     graph = [entity]
     video = video_entity(ctx.get("video"), pages, entity["@id"], ctx["title"])
@@ -1193,6 +1243,8 @@ def page_html(**ctx) -> str:
     esc = lambda value: html.escape(str(value), quote=True)  # noqa: E731
 
     badges = []
+    if ctx.get("price"):
+        badges.append(f'<span class="badge badge-price">{esc(price_badge(ctx["price"]))}</span>')
     if ctx["version"]:
         label = f"Version {ctx['version']}"
         badges.append(f'<span class="badge">{esc(label)}</span>')
@@ -1242,6 +1294,14 @@ def page_html(**ctx) -> str:
             '<meta property="og:video:type" content="text/html">\n'
             '<link rel="preconnect" href="https://i.ytimg.com">'
         )
+    price_line = ""
+    cta_label = f"Get {ctx['title']}"
+    if ctx.get("price"):
+        price_line = f'<p class="price-note">{esc(price_note(ctx["price"]))}</p>'
+        if float(ctx["price"]["minimum"]) == 0:
+            cta_label = f"Download {ctx['title']}"
+    ctx["cta_label"] = cta_label
+
     repo_link = (
         f'<a class="btn" href="{esc(ctx["repo"])}" target="_blank" rel="noopener">View on GitHub</a>'
         if ctx["repo"]
@@ -1297,9 +1357,10 @@ def page_html(**ctx) -> str:
   <p class="tagline">{ctx["tagline"] and esc(ctx["tagline"]) or ""}</p>
   <div class="badges">{"".join(badges)}</div>
   <div class="cta">
-    <a class="btn btn-primary" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Get {esc(ctx["title"])}</a>
+    <a class="btn btn-primary" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">{esc(ctx["cta_label"])}</a>
     {repo_link}
   </div>
+  {price_line}
   <div class="intro-more">{ctx["intro_rest"]}</div>
 </div>
 

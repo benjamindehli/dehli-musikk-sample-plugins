@@ -4,6 +4,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/maskintrommer"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/maskintrommer",
             "https://dehlimusikk.gumroad.com/l/maskintrommer",
@@ -27,6 +32,11 @@
         "title": "Midnight Wurli",
         "link": {
             "url": "https://store.dehlimusikk.no/l/midnight-wurli"
+        },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
         },
         "sameAs": [
             "https://store.dehlimusikk.no/l/midnight-wurli",
@@ -53,6 +63,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/edb-orgel"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/edb-orgel",
             "https://dehlimusikk.gumroad.com/l/edb-orgel",
@@ -76,6 +91,11 @@
         "title": "SubC",
         "link": {
             "url": "https://store.dehlimusikk.no/l/subc"
+        },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
         },
         "sameAs": [
             "https://store.dehlimusikk.no/l/subc",
@@ -102,6 +122,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/4-track-toy-piano"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/4-track-toy-piano",
             "https://dehlimusikk.gumroad.com/l/4-track-toy-piano",
@@ -126,6 +151,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/elektrisk-salmesykkel"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/elektrisk-salmesykkel",
             "https://dehlimusikk.gumroad.com/l/elektrisk-salmesykkel",
@@ -149,6 +179,11 @@
         "title": "StyloPoly",
         "link": {
             "url": "https://store.dehlimusikk.no/l/stylopoly"
+        },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
         },
         "sameAs": [
             "https://store.dehlimusikk.no/l/stylopoly",
@@ -175,6 +210,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/strykebrett"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/strykebrett",
             "https://dehlimusikk.gumroad.com/l/strykebrett",
@@ -200,6 +240,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/4-track-glockenspiel"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/4-track-glockenspiel",
             "https://dehlimusikk.gumroad.com/l/4-track-glockenspiel",
@@ -224,6 +269,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/4-track-music-box"
         },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/4-track-music-box",
             "https://dehlimusikk.gumroad.com/l/4-track-music-box",
@@ -247,6 +297,11 @@
         "title": "Voltage Controlled Cassette Organ",
         "link": {
             "url": "https://store.dehlimusikk.no/l/voltage-controlled-cassette-organ"
+        },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
         },
         "sameAs": [
             "https://store.dehlimusikk.no/l/voltage-controlled-cassette-organ",
@@ -273,6 +328,11 @@
         "link": {
             "url": "https://store.dehlimusikk.no/l/omni-84"
         },
+        "price": {
+            "minimum": "0",
+            "currency": "USD",
+            "payWhatYouWant": true
+        },
         "sameAs": [
             "https://store.dehlimusikk.no/l/omni-84",
             "https://dehlimusikk.gumroad.com/l/omni-84",
@@ -298,6 +358,11 @@
         "title": "Lo-fi Tape Piano",
         "link": {
             "url": "https://store.dehlimusikk.no/l/lo-fi-tape-piano"
+        },
+        "price": {
+            "minimum": "9.99",
+            "currency": "USD",
+            "payWhatYouWant": true
         },
         "video": {
             "name": {
