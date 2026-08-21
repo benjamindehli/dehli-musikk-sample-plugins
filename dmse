@@ -20,6 +20,8 @@
 #   ./dmse package omni-84      # sign + notarize the macOS .pkg  (needs signing config)
 #   ./dmse package all          # ... all 13
 #   ./dmse tarball omni-84      # build the Linux .tar.gz
+#   ./dmse site omni-84         # render README + Screenshots into docs/ (GitHub Pages)
+#   ./dmse site all             # ... all 13 product pages
 #   ./dmse configure            # (re)run cmake; also done automatically when needed
 #
 # Build dir defaults to "build" (override with BUILD_DIR=build-linux for Linux).
@@ -88,7 +90,7 @@ cmd_list() {
     registry | while IFS='|' read -r dir tgt prod; do
         printf '  %-35s %-32s %s\n' "${dir%-plugin}" "$tgt" "$prod"
     done
-    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · configure · list\n' "$B" "$N"
+    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · site · configure · list\n' "$B" "$N"
 }
 
 cmd_convert() {
@@ -263,6 +265,25 @@ cmd_tarball() {
     BUILD_DIR="$BUILD_DIR" packaging/linux/make_tarballs.sh $targets
 }
 
+cmd_site() {
+    need_plugin "${1:-}"
+    local recs dir tgt prod dirs=""
+    while IFS='|' read -r dir tgt prod; do dirs="$dirs $dir"; done <<< "$(records_for "$1")"
+    shift || true   # remaining args pass through to the generator (e.g. --format jpeg)
+
+    local py
+    for py in "${PYTHON:-}" python3 /usr/bin/python3; do
+        [ -n "$py" ] && command -v "$py" >/dev/null 2>&1 && break
+    done
+    [ -n "${py:-}" ] || die "python3 not found (it ships with the Xcode command line tools)"
+
+    info "Generating GitHub Pages sites:$dirs"
+    "$py" site/generate_site.py $dirs "$@"
+    info "${GRN}Done.$N Preview one with:  open <plugin>-plugin/docs/index.html
+  Commit each repo's docs/ folder, then set GitHub Pages to
+  \"Deploy from a branch\" → main → /docs in the repo settings."
+}
+
 cmd_help() {
     # Print the header comment block (from line 3 until the first non-comment line).
     awk 'NR>=3 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0"
@@ -281,6 +302,7 @@ case "$cmd" in
     format|fmt)     cmd_format "$@" ;;
     package|pkg)    cmd_package "$@" ;;
     tarball|linux)  cmd_tarball "$@" ;;
+    site|pages)     cmd_site "$@" ;;
     help|-h|--help) cmd_help ;;
     # Hidden helper for shell completion: fast (registry only, no cmake) list of the
     # plugin names + "all" that commands accept.

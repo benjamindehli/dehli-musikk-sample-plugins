@@ -6,10 +6,10 @@
 # and build kinds. Plugin names come from `dmse __plugins` (fast, no build), so
 # they stay correct as plugins are added or removed.
 
-_dmse_commands="list convert build rebuild run test format package tarball configure help"
+_dmse_commands="list convert build rebuild run test format package tarball site configure help"
 _dmse_kinds="standalone all au vst3"
 # Commands whose next argument is a plugin name (or "all").
-_dmse_takes_plugin() { case " convert build rebuild run package tarball " in *" $1 "*) return 0;; *) return 1;; esac; }
+_dmse_takes_plugin() { case " convert build rebuild run package tarball site " in *" $1 "*) return 0;; *) return 1;; esac; }
 
 # Ask the dmse being completed for its plugin list ($1 = the command word typed).
 _dmse_plugin_names() { "$1" __plugins 2>/dev/null; }

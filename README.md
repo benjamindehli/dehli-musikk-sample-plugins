@@ -9,6 +9,7 @@ Each sub project is its own git repository, co located here as siblings so they 
 * `CMakeLists.txt` fetches JUCE once and adds every sub project. It sets universal macOS binaries (arm64 plus x86_64), a default Release build type and the shared `dmse_add_plugin` helper from the engine.
 * `dmse` is a single entry point for the workflow, so neither you nor a tool has to remember the raw cmake, converter and packaging incantations.
 * `packaging/` holds the macOS signing and notarization scripts, the Linux tarball builder and the shell completion for `dmse`.
+* `site/` holds the product page generator and its stylesheet. It renders each plugin repository's README into the `docs/` folder that GitHub Pages serves.
 
 The sub repositories, each pulled in through `add_subdirectory`, are:
 
@@ -30,6 +31,7 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ./dmse format               # reformat all C++ to LLVM style, or --check to just report
 ./dmse package omni-84      # sign and notarize the macOS .pkg (needs signing config)
 ./dmse tarball omni-84      # build the Linux .tar.gz
+./dmse site omni-84         # render the product page into the plugin's docs/ folder
 ./dmse configure            # (re)run cmake, also done automatically when needed
 ```
 
@@ -46,6 +48,37 @@ ctest --test-dir build
 ```
 
 JUCE 8 is fetched automatically. Keep the build path free of parentheses and spaces, since JUCE's plugin manifest and binary data steps mis quote them.
+
+## Product pages
+
+Every plugin repository publishes a product page through GitHub Pages, for example [benjamindehli.github.io/Omni-84](https://benjamindehli.github.io/Omni-84/). The page is generated, never hand written:
+
+```
+./dmse site omni-84         # one plugin
+./dmse site all             # all 13
+```
+
+`site/generate_site.py` reads the plugin's `README.md` and renders it as a designed page: a hero with the icon, the latest version and a link to the store, the largest screenshot as the lead image, the full control documentation with every screenshot, the equipment gallery, and the release history as a collapsible list. The README stays the single source of truth, so a page is refreshed by editing the README and running the command again. Never hand edit a `docs/` folder, it is overwritten on the next run.
+
+Screenshots are re encoded for the web at up to 1200 pixels wide, as WebP when `cwebp` or Pillow is available and otherwise as JPEG through `sips`, which ships with macOS. A page and all its images come to a few hundred kilobytes rather than the ten megabytes the raw screenshots would cost. The originals in `Screenshots/` are never touched.
+
+The pages are written for search engines: a unique title and description per product, canonical and Open Graph tags, schema.org `SoftwareApplication` data with the version, operating systems and screenshots, a sitemap, lazily loaded images with explicit dimensions and a preloaded hero image.
+
+To publish a plugin for the first time, commit its `docs/` folder, then in the repository settings under Pages choose "Deploy from a branch", branch `main`, folder `/docs`.
+
+Anything the README cannot express goes in an optional `site.json` in the plugin repository root. Every key is optional:
+
+```json
+{
+  "storeUrl": "https://store.dehlimusikk.no/l/omni-84",
+  "tagline": "One line pitch, overrides the README's first sentence",
+  "heroImage": "Screenshots/Keyboard.png",
+  "price": "29",
+  "currency": "USD"
+}
+```
+
+A per product `storeUrl` sends buyers straight to the product instead of the store front page, and a price completes the schema.org offer. Note that a project page's `robots.txt` only applies at the domain root, so the generated sitemaps are best submitted to Search Console directly, or listed from the `benjamindehli.github.io` user site.
 
 ## Packaging and distribution
 
