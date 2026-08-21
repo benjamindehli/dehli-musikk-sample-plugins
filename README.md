@@ -66,7 +66,9 @@ What a README cannot express lives in `site/plugin-data.json`, one entry per pro
 "price": { "minimum": "9.99", "currency": "USD", "payWhatYouWant": true }
 ```
 
-which the page shows as "From $9.99" and publishes as both `offers.price` and a `minPrice`, so the figure is not read as a fixed one. A minimum of `0` renders as "Free · pay what you want" and adds `isAccessibleForFree`. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play, and it is also published as a `VideoObject` tied back to the instrument.
+which the page shows as "From $9.99" and publishes as both `offers.price` and a `minPrice`, so the figure is not read as a fixed one. A minimum of `0` renders as "Free · pay what you want" and adds `isAccessibleForFree`. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play, and it is also published as a `VideoObject` tied back to the instrument. `video` may also be a list, in which case the page shows a grid of players and publishes one `VideoObject` per video.
+
+Each plugin's README links to its published page just under the heading. The generator drops that link when it renders the page, since a page does not need to link to itself.
 
 Screenshots are re encoded for the web at up to 1200 pixels wide, as WebP when `cwebp` or Pillow is available and otherwise as JPEG through `sips`, which ships with macOS. A page and all its images come to a few hundred kilobytes rather than the ten megabytes the raw screenshots would cost. The originals in `Screenshots/` are never touched.
 

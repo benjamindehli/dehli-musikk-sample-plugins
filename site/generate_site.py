@@ -925,27 +925,52 @@ def render_more(siblings, images: Images) -> str:
     )
 
 
-def render_video(video, title: str) -> str:
+def normalize_videos(value):
+    """One video or several: the data file accepts an object or a list."""
+    if not value:
+        return []
+    videos = value if isinstance(value, list) else [value]
+    return [v for v in videos if v and youtube_id(v.get("contentUrl", ""))]
+
+
+def render_video(videos, title: str) -> str:
     """A click-to-load facade: no YouTube request until the reader asks for it."""
-    ident = youtube_id(video.get("contentUrl", ""))
-    if not ident:
+    videos = normalize_videos(videos)
+    if not videos:
         return ""
-    name = pick_language(video.get("name")) or f"{title} demo"
-    description = pick_language(video.get("description"))
-    watch = video.get("contentUrl")
-    label = html.escape(f"Play video: {name}", quote=True)
+
+    players = []
+    for video in videos:
+        ident = youtube_id(video["contentUrl"])
+        name = pick_language(video.get("name")) or f"{title} demo"
+        description = pick_language(video.get("description"))
+        label = html.escape(f"Play video: {name}", quote=True)
+        players.append(
+            '<figure class="video-item">'
+            + f'<div class="video" data-youtube="{ident}">'
+            f'<button class="video-play" type="button" aria-label="{label}">'
+            f'<img src="https://i.ytimg.com/vi/{ident}/hqdefault.jpg" alt="" loading="lazy" '
+            'width="480" height="360">'
+            '<span class="play" aria-hidden="true"></span></button></div>'
+            f'<figcaption class="video-caption"><strong>{html.escape(name)}</strong>'
+            + (f" — {html.escape(description)}" if description and len(videos) > 1 else "")
+            + f' <a href="{html.escape(video["contentUrl"], quote=True)}" target="_blank" '
+            'rel="noopener">Watch on YouTube</a></figcaption></figure>'
+        )
+
+    lead = ""
+    if len(videos) == 1:
+        description = pick_language(videos[0].get("description"))
+        lead = f"<p>{html.escape(description)}</p>" if description else ""
+
     return (
         '<section id="demo-video">'
-        '<h2><a class="anchor" href="#demo-video" aria-hidden="true">#</a>Video</h2>'
-        + (f"<p>{html.escape(description)}</p>" if description else "")
-        + f'<div class="video" data-youtube="{ident}">'
-        f'<button class="video-play" type="button" aria-label="{label}">'
-        f'<img src="https://i.ytimg.com/vi/{ident}/hqdefault.jpg" alt="" loading="lazy" '
-        'width="480" height="360">'
-        '<span class="play" aria-hidden="true"></span></button></div>'
-        f'<p class="video-caption">{html.escape(name)} — '
-        f'<a href="{html.escape(watch, quote=True)}" target="_blank" rel="noopener">'
-        "Watch on YouTube</a></p></section>"
+        '<h2><a class="anchor" href="#demo-video" aria-hidden="true">#</a>'
+        + ("Videos" if len(videos) > 1 else "Video")
+        + "</h2>"
+        + lead
+        + ('<div class="video-grid">' + "".join(players) + "</div>" if len(videos) > 1 else players[0])
+        + "</section>"
     )
 
 
@@ -972,6 +997,12 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         meta.setdefault("price", extra.get("price"))
     else:
         warn(f"{plugin_dir.name}: no entry in {PLUGIN_DATA.name} for \"{title}\"")
+
+    # A README may link to this very page near the top; that link is noise once
+    # the reader is already on it, and it must not be mistaken for the tagline.
+    if meta.get("pages"):
+        own_url = meta["pages"].rstrip("/")
+        intro = [b for b in intro if not (b["type"] == "para" and own_url in b["text"])]
 
     # The intro sits above the fold: either the blocks before the first heading,
     # or an explicit Introduction/Description section.
@@ -1180,23 +1211,22 @@ def structured_data(**ctx) -> str:
     entity["offers"] = offer
 
     graph = [entity]
-    video = video_entity(ctx.get("video"), pages, entity["@id"], ctx["title"])
-    if video:
-        entity["subjectOf"] = {"@id": video["@id"]}
-        graph.append(video)
+    subjects = []
+    for index, video in enumerate(normalize_videos(ctx.get("video"))):
+        node = video_entity(video, pages, entity["@id"], ctx["title"], index)
+        subjects.append({"@id": node["@id"]})
+        graph.append(node)
+    if subjects:
+        entity["subjectOf"] = subjects if len(subjects) > 1 else subjects[0]
     return json.dumps({"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False)
 
 
-def video_entity(video, pages: str, software_id: str, title: str):
+def video_entity(video, pages: str, software_id: str, title: str, index: int = 0):
     """A VideoObject for the demo, tied back to the instrument it demonstrates."""
-    if not video:
-        return None
     ident = youtube_id(video.get("contentUrl", ""))
-    if not ident:
-        return None
     entity = {
         "@type": "VideoObject",
-        "@id": pages + "#video",
+        "@id": pages + ("#video" if index == 0 else f"#video-{index + 1}"),
         "name": pick_language(video.get("name")) or f"{title} demo",
         "description": pick_language(video.get("description")) or f"A demonstration of {title}.",
         "thumbnailUrl": [f"https://i.ytimg.com/vi/{ident}/hqdefault.jpg"],
@@ -1286,7 +1316,8 @@ def page_html(**ctx) -> str:
         f'<script type="application/ld+json">\n{ctx["json_ld"]}\n</script>' if ctx.get("json_ld") else ""
     )
     og_video = ""
-    ident = youtube_id((ctx.get("video") or {}).get("contentUrl", ""))
+    first_video = next(iter(normalize_videos(ctx.get("video"))), None)
+    ident = youtube_id(first_video["contentUrl"]) if first_video else None
     if ident:
         og_video = (
             f'<meta property="og:video" content="https://www.youtube.com/watch?v={ident}">\n'

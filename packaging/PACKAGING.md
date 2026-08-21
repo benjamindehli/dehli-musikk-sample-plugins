@@ -221,10 +221,23 @@ Reconfigure (`cmake -B build`) and the packagers pick it up automatically via
 `build/dmse_plugins/<Target>.json`, so the binary, artifact names, and installer metadata
 can never disagree.
 
+A release also writes a new section into the plugin's `README.md`, which is what the
+published product page is generated from. Once the version and the release notes are
+final, regenerate the pages and commit each repository's `docs/` folder:
+
+```bash
+./dmse site all
+```
+
+The page's version badge, date and release history come from that run, so skipping it
+leaves the published pages advertising the previous version.
+
 ---
 
 ## 5. Before you ship
 
+- **Product pages:** run `./dmse site all` and commit every `docs/` folder, so the pages
+  match the version you are shipping (§4).
 - **Trademark:** "Omnichord" and "Suzuki" are Suzuki's marks. Settle the product naming and
   branding with legal before public sale (PLAN.md risk #4).
 - **Paid samples stay private:** the installer embeds the generated `assets/` bundle, which

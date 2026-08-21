@@ -364,6 +364,12 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "sameAs": [
+            "https://store.dehlimusikk.no/l/lo-fi-tape-piano",
+            "https://www.roqstar.io/item/lo-fi-tape-piano",
+            "https://www.cylex.no/bedrift-produkt/lo-fi+tape+piano_223136.html",
+            "https://www.youtube.com/watch?v=2k1QpuwCZzk"
+        ],
         "video": {
             "name": {
                 "en": "Lo-fi Tape Piano (sample pack)",
