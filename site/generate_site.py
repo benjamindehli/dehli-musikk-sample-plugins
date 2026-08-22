@@ -31,6 +31,8 @@ Only the Python standard library is used, so it runs on a stock macOS.
 from __future__ import annotations
 
 import argparse
+import calendar
+import datetime
 import html
 import json
 import re
@@ -186,12 +188,6 @@ class Encoder:
         self.ext = "webp" if want_format == "webp" else "jpg"
 
         self.tool = self._pick_tool()
-        if not self.tool:
-            warn(
-                "no image tool found (cwebp, sips, ImageMagick or Pillow) — "
-                "screenshots will be copied at full size. Re-run on macOS, or "
-                "install one, to optimize them."
-            )
 
     def _pick_tool(self):
         if self.format == "webp":
@@ -833,6 +829,28 @@ def price_note(price) -> str:
     return format_price(price)
 
 
+def last_sunday(year: int, month: int) -> datetime.date:
+    weeks = calendar.monthcalendar(year, month)
+    return datetime.date(year, month, max(week[calendar.SUNDAY] for week in weeks))
+
+
+def upload_datetime(value: str):
+    """Google wants uploadDate as a full ISO 8601 datetime with a timezone; the
+    data file only carries a calendar date. Noon keeps that date intact in every
+    timezone a viewer might be in, and the offset is Norway's for the date in
+    question (EU summer time runs from the last Sunday in March to the last in
+    October), so the value stays deterministic without a tzdata dependency."""
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value or ""):
+        return None
+    try:
+        date = datetime.date(*(int(part) for part in value.split("-")))
+    except ValueError:
+        warn(f"ignoring an impossible uploadDate: {value}")
+        return None
+    summer = last_sunday(date.year, 3) <= date < last_sunday(date.year, 10)
+    return f"{value}T12:00:00{'+02:00' if summer else '+01:00'}"
+
+
 def youtube_id(url: str):
     match = YOUTUBE_ID_RE.search(url or "")
     return match.group(1) if match else None
@@ -1282,8 +1300,9 @@ def video_entity(video, pages: str, software_id: str, title: str, index: int = 0
         "embedUrl": f"https://www.youtube.com/embed/{ident}",
         "about": {"@id": software_id},
     }
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", video.get("uploadDate") or ""):
-        entity["uploadDate"] = video["uploadDate"]
+    uploaded = upload_datetime(video.get("uploadDate"))
+    if uploaded:
+        entity["uploadDate"] = uploaded
     return entity
 
 
@@ -1551,9 +1570,24 @@ def main(argv=None) -> int:
         "--data", default=str(PLUGIN_DATA),
         help="shared product data: store links, sameAs profiles and demo videos",
     )
+    parser.add_argument(
+        "--allow-unoptimized", action="store_true",
+        help="write full size copies when no image tool is installed (they are "
+             "tens of megabytes; the default is to stop instead)",
+    )
     args = parser.parse_args(argv)
 
     encoder = Encoder(args.format)
+    if not encoder.tool and not args.allow_unoptimized:
+        die(
+            "no image tool found (cwebp, sips, ImageMagick or Pillow).\n"
+            "  Copying the screenshots at full size would add tens of megabytes to\n"
+            "  every plugin repo, so nothing was written. Install one:\n"
+            "      brew install webp        # macOS, gives cwebp\n"
+            "      sudo apt install webp    # Debian/Ubuntu\n"
+            "  (sips ships with macOS, so this should not happen there.)\n"
+            "  Pass --allow-unoptimized to write the copies anyway."
+        )
     info(f"Encoding screenshots as {encoder.describe()}")
     data = load_plugin_data(Path(args.data))
 
