@@ -996,14 +996,22 @@ def normalize_videos(value):
     return [v for v in videos if v and youtube_id(v.get("contentUrl", ""))]
 
 
-def render_video(videos, title: str) -> str:
-    """A click-to-load facade: no YouTube request until the reader asks for it."""
+def relative_watch_path(index: int) -> str:
+    return "video/" if index == 0 else f"video/{index + 1}/"
+
+
+def render_video(videos, title: str, pages=None) -> str:
+    """A click-to-load facade: no YouTube request until the reader asks for it.
+
+    No VideoObject is published here — the video is not this page's main content,
+    so it belongs to the watch page under video/, which this links to.
+    """
     videos = normalize_videos(videos)
     if not videos:
         return ""
 
     players = []
-    for video in videos:
+    for index, video in enumerate(videos):
         ident = youtube_id(video["contentUrl"])
         name = pick_language(video.get("name")) or f"{title} demo"
         description = pick_language(video.get("description"))
@@ -1017,6 +1025,11 @@ def render_video(videos, title: str) -> str:
             '<span class="play" aria-hidden="true"></span></button></div>'
             f'<figcaption class="video-caption"><strong>{html.escape(name)}</strong>'
             + (f" — {html.escape(description)}" if description and len(videos) > 1 else "")
+            + (
+                f' <a href="{html.escape(relative_watch_path(index), quote=True)}">Video page</a> ·'
+                if pages
+                else ""
+            )
             + f' <a href="{html.escape(video["contentUrl"], quote=True)}" target="_blank" '
             'rel="noopener">Watch on YouTube</a></figcaption></figure>'
         )
@@ -1038,6 +1051,135 @@ def render_video(videos, title: str) -> str:
 
 
 # ── page assembly ────────────────────────────────────────────────────────────
+
+def watch_url(pages: str, index: int) -> str:
+    """Watch pages live at video/ and video/2/, video/3/ … under the product."""
+    return f"{pages}video/" if index == 0 else f"{pages}video/{index + 1}/"
+
+
+def watch_dir(out_dir: Path, index: int) -> Path:
+    return out_dir / "video" if index == 0 else out_dir / "video" / str(index + 1)
+
+
+def build_watch_page(video, index: int, ctx) -> None:
+    """A page whose main content is the video, which is what Google means by a
+    watch page: the player is real HTML the crawler can see, not a facade, and
+    the surrounding text is about the video rather than the instrument manual."""
+    ident = youtube_id(video["contentUrl"])
+    name = pick_language(video.get("name")) or f"{ctx['title']} demo"
+    description = pick_language(video.get("description")) or f"A demonstration of {ctx['title']}."
+    url = watch_url(ctx["pages"], index)
+    up = "../" * (2 if index else 1)
+    esc = lambda value: html.escape(str(value), quote=True)  # noqa: E731
+
+    badges = []
+    if ctx["price"]:
+        badges.append(f'<span class="badge badge-price">{esc(price_badge(ctx["price"]))}</span>')
+    if ctx["version"]:
+        badges.append(f'<span class="badge">Version {esc(ctx["version"])}</span>')
+    for fmt in ctx["formats"]:
+        badges.append(f'<span class="badge">{esc(fmt)}</span>')
+
+    graph = [
+        {
+            "@type": "WebPage",
+            "@id": url,
+            "url": url,
+            "name": name,
+            "description": description,
+            "mainEntity": {"@id": url + "#video"},
+        },
+        {
+            "@type": "VideoObject",
+            "@id": url + "#video",
+            "name": name,
+            "description": description,
+            "url": url,
+            "thumbnailUrl": [f"https://i.ytimg.com/vi/{ident}/hqdefault.jpg"],
+            "contentUrl": video["contentUrl"],
+            "embedUrl": f"https://www.youtube.com/embed/{ident}",
+            "mainEntityOfPage": {"@id": url},
+            "about": {"@id": ctx["store_url"]},
+            "publisher": {"@type": "Organization", "name": BRAND, "url": BRAND_URL},
+        },
+    ]
+    uploaded = upload_datetime(video.get("uploadDate"))
+    if uploaded:
+        graph[1]["uploadDate"] = uploaded
+
+    icon_tag = f'<img src="{up}img/icon.png" alt="">' if ctx["icon"] else ""
+    favicon = f'<link rel="icon" href="{up}img/icon.png">' if ctx["icon"] else ""
+
+    page = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(name)} | {BRAND}</title>
+<meta name="description" content="{esc(summarize(description))}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="theme-color" content="#a35a2a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17161a" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="{esc(url)}">
+<meta property="og:type" content="video.other">
+<meta property="og:site_name" content="{BRAND}">
+<meta property="og:title" content="{esc(name)}">
+<meta property="og:description" content="{esc(summarize(description))}">
+<meta property="og:url" content="{esc(url)}">
+<meta property="og:image" content="https://i.ytimg.com/vi/{ident}/hqdefault.jpg">
+<meta property="og:video" content="https://www.youtube.com/watch?v={ident}">
+<meta property="og:video:url" content="https://www.youtube.com/embed/{ident}">
+<meta property="og:video:type" content="text/html">
+<meta name="twitter:card" content="player">
+<meta name="twitter:title" content="{esc(name)}">
+<meta name="twitter:description" content="{esc(summarize(description))}">
+{favicon}
+<link rel="stylesheet" href="{up}style.css">
+<script type="application/ld+json">
+{json.dumps({"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False)}
+</script>
+</head>
+<body>
+
+<header class="topbar">
+  {icon_tag}
+  <a class="name" href="{up}">{esc(ctx["title"])}</a>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Get it</a>
+</header>
+
+<main class="watch">
+  <h1>{esc(name)}</h1>
+  <div class="video">
+    <iframe src="https://www.youtube.com/embed/{ident}" title="{esc(name)}"
+      allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
+  <p class="lead">{esc(description)}</p>
+  <div class="badges">{"".join(badges)}</div>
+  <p>{esc(ctx["tagline"])}</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">{esc(ctx["cta_label"])}</a>
+    <a class="btn" href="{up}">{esc(ctx["title"])} documentation</a>
+    <a class="btn" href="https://www.youtube.com/watch?v={ident}" target="_blank" rel="noopener">Watch on YouTube</a>
+  </div>
+</main>
+
+<footer>
+  <nav>
+    <a href="{up}">Product page</a>
+    <a href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Store</a>
+    <a href="{BRAND_URL}" target="_blank" rel="noopener">{BRAND}</a>
+  </nav>
+  <p>{esc(name)} — a demonstration of {esc(ctx["title"])}, a sample instrument by {BRAND}.</p>
+</footer>
+
+</body>
+</html>
+"""
+    directory = watch_dir(ctx["out_dir"], index)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "index.html").write_text(page, encoding="utf-8")
+
 
 def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> None:
     readme = plugin_dir / "README.md"
@@ -1108,7 +1250,8 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     if icon_src.is_file():
         icon = "img/icon.png"
 
-    video_html = render_video(meta["video"], title) if meta.get("video") else ""
+    videos = normalize_videos(meta.get("video"))
+    video_html = render_video(videos, title, meta.get("pages")) if videos else ""
 
     body = [video_html] if video_html else []
     for section in sections:
@@ -1185,12 +1328,39 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
     shutil.copy2(SITE_DIR / "style.css", out_dir / "style.css")
 
+    # Each video gets its own watch page; the product page only links to them.
+    if pages:
+        for index, video in enumerate(videos):
+            build_watch_page(video, index, {
+                "title": title, "tagline": tagline, "pages": pages, "out_dir": out_dir,
+                "store_url": store_url, "price": price, "version": version,
+                "formats": formats, "icon": icon,
+                "cta_label": f"Download {title}" if price and float(price["minimum"]) == 0
+                else f"Get {title}",
+            })
+        prune_watch_pages(out_dir, len(videos))
+
     if pages:
         lastmod = date if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or "") else None
-        (out_dir / "sitemap.xml").write_text(sitemap_xml(pages, lastmod), encoding="utf-8")
+        (out_dir / "sitemap.xml").write_text(
+            sitemap_xml(pages, lastmod, videos, title), encoding="utf-8"
+        )
         (out_dir / "robots.txt").write_text(
             f"User-agent: *\nAllow: /\n\nSitemap: {pages}sitemap.xml\n", encoding="utf-8"
         )
+
+
+def prune_watch_pages(out_dir: Path, count: int) -> None:
+    """Drop watch pages left over from a video that was removed from the data."""
+    video_dir = out_dir / "video"
+    if not video_dir.is_dir():
+        return
+    if count == 0:
+        shutil.rmtree(video_dir)
+        return
+    for child in video_dir.iterdir():
+        if child.is_dir() and child.name.isdigit() and int(child.name) > count:
+            shutil.rmtree(child)
 
 
 def seo_title(title: str, formats) -> str:
@@ -1276,43 +1446,44 @@ def structured_data(**ctx) -> str:
             entity["isAccessibleForFree"] = True
     entity["offers"] = offer
 
-    graph = [entity]
-    subjects = []
-    for index, video in enumerate(normalize_videos(ctx.get("video"))):
-        node = video_entity(video, pages, entity["@id"], ctx["title"], index)
-        subjects.append({"@id": node["@id"]})
-        graph.append(node)
-    if subjects:
-        entity["subjectOf"] = subjects if len(subjects) > 1 else subjects[0]
-    return json.dumps({"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False)
+    # The demo videos are described on their own watch pages, not here: a product
+    # page is not a watch page, and Google will not index a video that is only a
+    # click-to-load facade in the markup.
+    return json.dumps(
+        {"@context": "https://schema.org", "@graph": [entity]}, indent=2, ensure_ascii=False
+    )
 
 
-def video_entity(video, pages: str, software_id: str, title: str, index: int = 0):
-    """A VideoObject for the demo, tied back to the instrument it demonstrates."""
-    ident = youtube_id(video.get("contentUrl", ""))
-    entity = {
-        "@type": "VideoObject",
-        "@id": pages + ("#video" if index == 0 else f"#video-{index + 1}"),
-        "name": pick_language(video.get("name")) or f"{title} demo",
-        "description": pick_language(video.get("description")) or f"A demonstration of {title}.",
-        "thumbnailUrl": [f"https://i.ytimg.com/vi/{ident}/hqdefault.jpg"],
-        "contentUrl": video.get("contentUrl"),
-        "embedUrl": f"https://www.youtube.com/embed/{ident}",
-        "about": {"@id": software_id},
-    }
-    uploaded = upload_datetime(video.get("uploadDate"))
-    if uploaded:
-        entity["uploadDate"] = uploaded
-    return entity
-
-
-def sitemap_xml(pages: str, lastmod) -> str:
+def sitemap_xml(pages: str, lastmod, videos=(), title: str = "") -> str:
+    """The product page plus one entry per watch page, the latter carrying the
+    video sitemap extension Google asks for when you want video indexed."""
     stamp = f"\n    <lastmod>{lastmod}</lastmod>" if lastmod else ""
+    entries = [f"  <url>\n    <loc>{pages}</loc>{stamp}\n  </url>"]
+
+    for index, video in enumerate(videos):
+        ident = youtube_id(video["contentUrl"])
+        name = pick_language(video.get("name")) or f"{title} demo"
+        description = pick_language(video.get("description")) or f"A demonstration of {title}."
+        published = upload_datetime(video.get("uploadDate"))
+        lines = [
+            f"  <url>\n    <loc>{watch_url(pages, index)}</loc>",
+            "    <video:video>",
+            f"      <video:thumbnail_loc>https://i.ytimg.com/vi/{ident}/hqdefault.jpg</video:thumbnail_loc>",
+            f"      <video:title>{html.escape(name)}</video:title>",
+            f"      <video:description>{html.escape(description)}</video:description>",
+            f"      <video:player_loc>https://www.youtube.com/embed/{ident}</video:player_loc>",
+        ]
+        if published:
+            lines.append(f"      <video:publication_date>{published}</video:publication_date>")
+        lines += ["    </video:video>", "  </url>"]
+        entries.append("\n".join(lines))
+
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"  <url>\n    <loc>{pages}</loc>{stamp}\n  </url>\n"
-        "</urlset>\n"
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+        '        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n'
+        + "\n".join(entries)
+        + "\n</urlset>\n"
     )
 
 
@@ -1382,16 +1553,12 @@ def page_html(**ctx) -> str:
     json_ld = (
         f'<script type="application/ld+json">\n{ctx["json_ld"]}\n</script>' if ctx.get("json_ld") else ""
     )
-    og_video = ""
-    first_video = next(iter(normalize_videos(ctx.get("video"))), None)
-    ident = youtube_id(first_video["contentUrl"]) if first_video else None
-    if ident:
-        og_video = (
-            f'<meta property="og:video" content="https://www.youtube.com/watch?v={ident}">\n'
-            f'<meta property="og:video:url" content="https://www.youtube.com/embed/{ident}">\n'
-            '<meta property="og:video:type" content="text/html">\n'
-            '<link rel="preconnect" href="https://i.ytimg.com">'
-        )
+    # og:video belongs on the watch page, where the player actually is.
+    og_video = (
+        '<link rel="preconnect" href="https://i.ytimg.com">'
+        if normalize_videos(ctx.get("video"))
+        else ""
+    )
     # Star and follow both need a signed-in GitHub session, so send visitors
     # through the login page and straight back to where they were headed.
     github_cta = ""

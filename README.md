@@ -66,7 +66,9 @@ What a README cannot express lives in `site/plugin-data.json`, one entry per pro
 "price": { "minimum": "9.99", "currency": "USD", "payWhatYouWant": true }
 ```
 
-which the page shows as "From $9.99" and publishes as both `offers.price` and a `minPrice`, so the figure is not read as a fixed one. A minimum of `0` renders as "Free · pay what you want" and adds `isAccessibleForFree`. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play, and it is also published as a `VideoObject` tied back to the instrument. `video` may also be a list, in which case the page shows a grid of players and publishes one `VideoObject` per video.
+which the page shows as "From $9.99" and publishes as both `offers.price` and a `minPrice`, so the figure is not read as a fixed one. A minimum of `0` renders as "Free · pay what you want" and adds `isAccessibleForFree`. The store link doubles as the product's `@id` in the structured data, which tells search engines that this page, the store listing and the website all describe the same instrument. The video is embedded as a click to load facade, so no request reaches YouTube until the reader presses play. `video` may also be a list, in which case the page shows a grid of players.
+
+Each video also gets a watch page of its own, at `video/` and then `video/2/`, `video/3/` for any further ones. Google only indexes a video when it is the main content of the page and when the player is real markup rather than something a click creates, so the watch page leads with an ordinary `<iframe>` and carries the `VideoObject` structured data, while the product page keeps the facade and simply links to it. The generated `sitemap.xml` lists the product page plus every watch page, the latter with the video sitemap extension.
 
 Each plugin's README links to its published page just under the heading. The generator drops that link when it renders the page, since a page does not need to link to itself.
 
