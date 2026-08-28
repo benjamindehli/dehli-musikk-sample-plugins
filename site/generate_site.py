@@ -1204,6 +1204,59 @@ def build_watch_page(video, index: int, ctx) -> None:
     (directory / "index.html").write_text(page, encoding="utf-8")
 
 
+def build_404_page(ctx) -> None:
+    """GitHub Pages serves this for any missing path under the site, including
+    deep ones, and the browser keeps that URL — so every asset link here has to
+    be root relative rather than relative to the page."""
+    base = urllib.parse.urlparse(ctx["pages"]).path  # e.g. /Omni-84/
+    esc = lambda value: html.escape(str(value), quote=True)  # noqa: E731
+    icon_tag = f'<img src="{base}img/icon.png" alt="">' if ctx["icon"] else ""
+    favicon = f'<link rel="icon" href="{base}img/icon.png">' if ctx["icon"] else ""
+
+    page = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found | {esc(ctx["title"])}</title>
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#a35a2a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17161a" media="(prefers-color-scheme: dark)">
+{favicon}
+<link rel="stylesheet" href="{base}style.css">
+</head>
+<body>
+
+<header class="topbar">
+  {icon_tag}
+  <a class="name" href="{base}">{esc(ctx["title"])}</a>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Get it</a>
+</header>
+
+<div class="hero">
+  <h1>Page not found</h1>
+  <p class="tagline">That page does not exist on the {esc(ctx["title"])} site.
+  It may have been renamed, or the link that brought you here may be out of date.</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="{base}">{esc(ctx["title"])} product page</a>
+    <a class="btn" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Store</a>
+  </div>
+</div>
+
+<footer>
+  <nav>
+    <a href="{base}">Product page</a>
+    <a href="{BRAND_URL}" target="_blank" rel="noopener">{BRAND}</a>
+  </nav>
+</footer>
+
+</body>
+</html>
+"""
+    (ctx["out_dir"] / "404.html").write_text(page, encoding="utf-8")
+
+
 def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> None:
     readme = plugin_dir / "README.md"
     if not readme.is_file():
@@ -1355,6 +1408,10 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
 
     # Each video gets its own watch page; the product page only links to them.
     if pages:
+        build_404_page({
+            "title": title, "pages": pages, "out_dir": out_dir,
+            "store_url": store_url, "icon": icon,
+        })
         for index, video in enumerate(videos):
             build_watch_page(video, index, {
                 "title": title, "tagline": tagline, "pages": pages, "out_dir": out_dir,
