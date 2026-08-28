@@ -55,8 +55,11 @@ BRAND_URL = "https://www.dehlimusikk.no/"
 AUTHOR_ID = "https://musicbrainz.org/artist/56639e59-2bb5-40bd-9d5a-97d964298b6f"
 AUTHOR_NAME = "Benjamin Dehli"
 PUBLISHER_ID = BRAND_URL
-# Applies to the generated pages, not to the code (GPL-3.0) or the paid samples.
-CONTENT_LICENSE = "https://creativecommons.org/licenses/by-sa/4.0/"
+# The pages are generated from each repository's README and are published from
+# that same repository, so they carry the repository's licence. GPL 3.0 only:
+# neither the LICENSE files nor the engine README offer the "or any later
+# version" option.
+CONTENT_LICENSE = "https://www.gnu.org/licenses/gpl-3.0.html"
 DEFAULT_STORE_URL = "https://store.dehlimusikk.no/"
 DECENT_SAMPLER_URL = "https://www.decentsamples.com/product/decent-sampler-plugin/"
 
