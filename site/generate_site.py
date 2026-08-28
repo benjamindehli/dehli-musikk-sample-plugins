@@ -1469,7 +1469,8 @@ def structured_data(**ctx) -> str:
         "url": pages,
         "applicationCategory": "MultimediaApplication",
         "applicationSubCategory": "Sample library / virtual instrument",
-        "downloadUrl": ctx["store_url"],
+        # Where to get it is stated once, by offers.url below: downloadUrl means
+        # a link to the binary itself, which a store page is not.
         "author": {"@id": AUTHOR_ID},
         "publisher": {"@id": PUBLISHER_ID},
     }
