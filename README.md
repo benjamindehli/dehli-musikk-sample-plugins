@@ -90,7 +90,7 @@ A single plugin can override the shared data with an optional `site.json` in its
 }
 ```
 
-A `price` here may be a plain number or the same object as in the shared data. Note that a project page's `robots.txt` only applies at the domain root, so the generated sitemaps are best submitted to Search Console directly, or listed from the `benjamindehli.github.io` user site.
+A `price` here may be a plain number or the same object as in the shared data. A project page's `robots.txt` only applies at the domain root, so the one each plugin site generates is never actually read. `site/user-site/` holds the two files that are: a `robots.txt` and a sitemap index listing all thirteen sitemaps, to be published from the root of the `benjamindehli.github.io` repository. They are regenerated on every `./dmse site` run, from every plugin in the workspace rather than only the ones being built.
 
 ## Packaging and distribution
 
