@@ -1,6 +1,7 @@
 [
     {
         "title": "MaskinTrommer",
+        "description": "Maskintrommer: electronic drums from a Korg MS-20, Roland SH-09, Doepfer Dark Energy and Sequential Pro-One, with many samples per sound.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/maskintrommer"
         },
@@ -36,6 +37,7 @@
     },
     {
         "title": "Midnight Wurli",
+        "description": "Midnight Wurli: a Wurlitzer 200A played softly, sampled from the line out and a contact microphone that captures key clicks and pedal noise.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/midnight-wurli"
         },
@@ -72,6 +74,7 @@
     },
     {
         "title": "EDB-Orgel",
+        "description": "EDB-Orgel: four digital synthesis types with the workflow of a drawbar organ crossed with an analog synth. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/edb-orgel"
         },
@@ -108,6 +111,7 @@
     },
     {
         "title": "SubC",
+        "description": "SubC: a Dreadbox Erebus v2 triangle oscillator run through saturation circuits and effects, in mono and stereo. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/subc"
         },
@@ -144,6 +148,7 @@
     },
     {
         "title": "4-track Toy Piano",
+        "description": "4-track Toy Piano: a Kalikå Leksakspiano on cassette tape at normal and half speed, playable an octave down. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/4-track-toy-piano"
         },
@@ -179,6 +184,7 @@
     },
     {
         "title": "Elektrisk Salmesykkel",
+        "description": "Elektrisk Salmesykkel: a Yamaha L-20D electric harmonium with tremulant, noise and reverb, and an air supply that sags as more notes are held.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/elektrisk-salmesykkel"
         },
@@ -214,6 +220,7 @@
     },
     {
         "title": "StyloPoly",
+        "description": "StyloPoly: a Dubreq Stylophone S-1 made polyphonic, blending its three voices with noise, vibrato and filters. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/stylopoly"
         },
@@ -250,6 +257,7 @@
     },
     {
         "title": "Strykebrett",
+        "description": "Strykebrett: a sampled Logan String Melody II string synthesiser with ensemble, phaser, echo and reverb. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/strykebrett"
         },
@@ -286,6 +294,7 @@
     },
     {
         "title": "4-track Glockenspiel",
+        "description": "4-track Glockenspiel: a glockenspiel on cassette tape at normal and half speed, so every note also plays an octave down. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/4-track-glockenspiel"
         },
@@ -321,6 +330,7 @@
     },
     {
         "title": "4-track Music Box",
+        "description": "4-track Music Box: a music box on cassette tape at normal and half speed, layering the original pitch an octave below. For VST3, AU and Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/4-track-music-box"
         },
@@ -356,6 +366,7 @@
     },
     {
         "title": "Voltage Controlled Cassette Organ",
+        "description": "Voltage Controlled Cassette Organ: a Korg CX-3 sampled through cassette tape, where wow, flutter and warble add organic movement to the drawbars.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/voltage-controlled-cassette-organ"
         },
@@ -392,6 +403,7 @@
     },
     {
         "title": "Omni-84",
+        "description": "Omni-84: the Suzuki Omnichord OM-84 sampled in full, from drums and bass to chords, keyboard and AutoStrum SonicStrings. Free for VST3 and AU.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/omni-84"
         },
@@ -429,6 +441,7 @@
     },
     {
         "title": "Lo-fi Tape Piano",
+        "description": "Lo-fi Tape Piano: a Louis Zwicki Pianette recorded to cassette through three microphones, with tape compression, wow and flutter. VST3, AU, Decent Sampler.",
         "link": {
             "url": "https://store.dehlimusikk.no/l/lo-fi-tape-piano"
         },

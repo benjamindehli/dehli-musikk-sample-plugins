@@ -1328,6 +1328,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         meta.setdefault("price", extra.get("price"))
         meta.setdefault("heroImage", extra.get("heroImage"))
         meta.setdefault("jsonLdIds", extra.get("jsonLdIds"))
+        meta.setdefault("description", extra.get("description"))
     else:
         warn(f"{plugin_dir.name}: no entry in {PLUGIN_DATA.name} for \"{title}\"")
 
