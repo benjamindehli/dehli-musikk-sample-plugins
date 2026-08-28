@@ -1441,6 +1441,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         slug=meta.get("slug"),
         pages=pages,
         store_url=store_url,
+        product_page=product_page_url(meta),
         price=price,
         toc="".join(toc),
         body="\n".join(body),
@@ -1520,6 +1521,14 @@ def seo_keywords(title: str, formats) -> str:
         if word and word.lower() not in [s.lower() for s in seen]:
             seen.append(word)
     return ", ".join(seen)
+
+
+def product_page_url(meta):
+    """The instrument's page on dehlimusikk.no, taken from sameAs. These pages are
+    English, so the English variant wins when both are listed."""
+    urls = [u for u in (meta.get("sameAs") or []) if "dehlimusikk.no/" in u and "/products/" in u]
+    english = [u for u in urls if "/en/products/" in u]
+    return (english or urls or [None])[0]
 
 
 def json_ld_ids(meta, pages, plugin_dir: Path):
@@ -1818,6 +1827,12 @@ def page_html(**ctx) -> str:
         if ctx["repo"]
         else ""
     )
+    product_page_link = (
+        f'<a href="{esc(ctx["product_page"])}" target="_blank" rel="noopener">'
+        f'{esc(ctx["title"])} at {BRAND}</a>'
+        if ctx.get("product_page")
+        else ""
+    )
     repo_footer = (
         f'<a href="{esc(ctx["repo"])}" target="_blank" rel="noopener">Source on GitHub</a>'
         if ctx["repo"]
@@ -1893,6 +1908,7 @@ def page_html(**ctx) -> str:
 <footer>
   {topbar_icon}
   <nav>
+    {product_page_link}
     <a href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Store</a>
     <a href="{BRAND_URL}" target="_blank" rel="noopener">{BRAND}</a>
     <a href="{DECENT_SAMPLER_URL}" target="_blank" rel="noopener">Decent Sampler</a>
