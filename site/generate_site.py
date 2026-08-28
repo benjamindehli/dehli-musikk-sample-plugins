@@ -1435,6 +1435,31 @@ def author_nodes():
     ]
 
 
+def webpage_node(ctx):
+    """The product page itself. Without it the graph jumps from the site to the
+    instrument and never says what this particular page is about."""
+    node = {
+        "@type": "WebPage",
+        "@id": ctx["pages"],
+        "url": ctx["pages"],
+        "name": ctx["title"],
+        "description": ctx["description"],
+        "inLanguage": "en",
+        "isPartOf": {"@id": ctx["ids"]["website"]},
+        "mainEntity": {"@id": ctx["ids"]["product"]},
+    }
+    if ctx["hero"]:
+        image = {"@type": "ImageObject", "url": ctx["pages"] + ctx["hero"]["url"]}
+        size = ctx["hero"]["size"]
+        if size:
+            image["width"], image["height"] = size
+        node["primaryImageOfPage"] = image
+    # The page is regenerated from the README, so a release is what changes it.
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", ctx["date"] or ""):
+        node["dateModified"] = ctx["date"]
+    return node
+
+
 def website_node(ctx):
     """The GitHub Pages site itself, as distinct from the instrument it documents."""
     node = {
@@ -1519,7 +1544,7 @@ def structured_data(**ctx) -> str:
     # The demo videos are described on their own watch pages, not here: a product
     # page is not a watch page, and Google will not index a video that is only a
     # click-to-load facade in the markup.
-    graph = [website_node(ctx), entity] + author_nodes()
+    graph = [website_node(ctx), webpage_node(ctx), entity] + author_nodes()
     return json.dumps(
         {"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False
     )
