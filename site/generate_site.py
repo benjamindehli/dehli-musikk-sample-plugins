@@ -1103,8 +1103,14 @@ def build_watch_page(video, index: int, ctx) -> None:
             "description": description,
             "inLanguage": "en",
             "isPartOf": {"@id": ctx["ids"]["website"]},
+            "breadcrumb": {"@id": url + "#breadcrumb"},
             "mainEntity": {"@id": url + "#video"},
         },
+        breadcrumb_node(url + "#breadcrumb", [
+            (BRAND, BRAND_URL),
+            (ctx["title"], ctx["pages"]),
+            ("Video" if index == 0 else f"Video {index + 1}", url),
+        ]),
         {
             "@type": "VideoObject",
             "@id": url + "#video",
@@ -1435,6 +1441,18 @@ def author_nodes():
     ]
 
 
+def breadcrumb_node(identifier: str, trail):
+    """A trail of (name, url) pairs, so results show the path rather than a URL."""
+    return {
+        "@type": "BreadcrumbList",
+        "@id": identifier,
+        "itemListElement": [
+            {"@type": "ListItem", "position": n, "name": name, "item": url}
+            for n, (name, url) in enumerate(trail, start=1)
+        ],
+    }
+
+
 def webpage_node(ctx):
     """The product page itself. Without it the graph jumps from the site to the
     instrument and never says what this particular page is about."""
@@ -1447,6 +1465,7 @@ def webpage_node(ctx):
         "inLanguage": "en",
         "isPartOf": {"@id": ctx["ids"]["website"]},
         "mainEntity": {"@id": ctx["ids"]["product"]},
+        "breadcrumb": {"@id": ctx["pages"] + "#breadcrumb"},
     }
     if ctx["hero"]:
         image = {"@type": "ImageObject", "url": ctx["pages"] + ctx["hero"]["url"]}
@@ -1544,7 +1563,10 @@ def structured_data(**ctx) -> str:
     # The demo videos are described on their own watch pages, not here: a product
     # page is not a watch page, and Google will not index a video that is only a
     # click-to-load facade in the markup.
-    graph = [website_node(ctx), webpage_node(ctx), entity] + author_nodes()
+    crumbs = breadcrumb_node(
+        pages + "#breadcrumb", [(BRAND, BRAND_URL), (ctx["title"], pages)]
+    )
+    graph = [website_node(ctx), webpage_node(ctx), crumbs, entity] + author_nodes()
     return json.dumps(
         {"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False
     )
