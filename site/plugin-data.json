@@ -9,7 +9,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/MaskinTrommer/#website",
+            "product": "https://www.dehlimusikk.no/products/maskintrommer/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/maskintrommer/",
+            "https://www.dehlimusikk.no/en/products/maskintrommer/",
             "https://store.dehlimusikk.no/l/maskintrommer",
             "https://dehlimusikk.gumroad.com/l/maskintrommer",
             "https://www.cylex.no/bedrift-produkt/maskintrommer_266081.html",
@@ -38,7 +44,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/MidnightWurli/#website",
+            "product": "https://www.dehlimusikk.no/products/midnight-wurli/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/midnight-wurli/",
+            "https://www.dehlimusikk.no/en/products/midnight-wurli/",
             "https://store.dehlimusikk.no/l/midnight-wurli",
             "https://dehlimusikk.gumroad.com/l/midnight-wurli",
             "https://www.cylex.no/bedrift-produkt/midnight+wurli_266062.html",
@@ -69,7 +81,13 @@
             "payWhatYouWant": true
         },
         "heroImage": "Screenshots/edb-orgel_mixer.png",
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/EDB-Orgel/#website",
+            "product": "https://www.dehlimusikk.no/products/edb-orgel/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/edb-orgel/",
+            "https://www.dehlimusikk.no/en/products/edb-orgel/",
             "https://store.dehlimusikk.no/l/edb-orgel",
             "https://dehlimusikk.gumroad.com/l/edb-orgel",
             "https://www.cylex.no/bedrift-produkt/edb-orgel_223146.html",
@@ -98,7 +116,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/SubC/#website",
+            "product": "https://www.dehlimusikk.no/products/subc/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/subc/",
+            "https://www.dehlimusikk.no/en/products/subc/",
             "https://store.dehlimusikk.no/l/subc",
             "https://dehlimusikk.gumroad.com/l/subc",
             "https://www.cylex.no/bedrift-produkt/subc_223145.html",
@@ -128,7 +152,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/4-track-toy-piano/#website",
+            "product": "https://www.dehlimusikk.no/products/4-track-toy-piano/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/4-track-toy-piano/",
+            "https://www.dehlimusikk.no/en/products/4-track-toy-piano/",
             "https://store.dehlimusikk.no/l/4-track-toy-piano",
             "https://dehlimusikk.gumroad.com/l/4-track-toy-piano",
             "https://www.cylex.no/bedrift-produkt/4-track-toy-piano_223144.html",
@@ -157,7 +187,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/ElektriskSalmesykkel/#website",
+            "product": "https://www.dehlimusikk.no/products/elektrisk-salmesykkel/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/elektrisk-salmesykkel/",
+            "https://www.dehlimusikk.no/en/products/elektrisk-salmesykkel/",
             "https://store.dehlimusikk.no/l/elektrisk-salmesykkel",
             "https://dehlimusikk.gumroad.com/l/elektrisk-salmesykkel",
             "https://www.cylex.no/bedrift-produkt/elektrisk-salmesykkel_223143.html",
@@ -186,7 +222,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/StyloPoly/#website",
+            "product": "https://www.dehlimusikk.no/products/stylopoly/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/stylopoly/",
+            "https://www.dehlimusikk.no/en/products/stylopoly/",
             "https://store.dehlimusikk.no/l/stylopoly",
             "https://dehlimusikk.gumroad.com/l/stylopoly",
             "https://www.cylex.no/bedrift-produkt/stylopoly_223142.html",
@@ -216,7 +258,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/Strykebrett/#website",
+            "product": "https://www.dehlimusikk.no/products/strykebrett/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/strykebrett/",
+            "https://www.dehlimusikk.no/en/products/strykebrett/",
             "https://store.dehlimusikk.no/l/strykebrett",
             "https://dehlimusikk.gumroad.com/l/strykebrett",
             "https://www.cylex.no/bedrift-produkt/strykebrett_223141.html",
@@ -246,7 +294,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/4-track-glockenspiel/#website",
+            "product": "https://www.dehlimusikk.no/products/4-track-glockenspiel/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/4-track-glockenspiel/",
+            "https://www.dehlimusikk.no/en/products/4-track-glockenspiel/",
             "https://store.dehlimusikk.no/l/4-track-glockenspiel",
             "https://dehlimusikk.gumroad.com/l/4-track-glockenspiel",
             "https://www.cylex.no/bedrift-produkt/4-track+glockenspiel_223140.html",
@@ -275,7 +329,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/4-track-music-box/#website",
+            "product": "https://www.dehlimusikk.no/products/4-track-music-box/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/4-track-music-box/",
+            "https://www.dehlimusikk.no/en/products/4-track-music-box/",
             "https://store.dehlimusikk.no/l/4-track-music-box",
             "https://dehlimusikk.gumroad.com/l/4-track-music-box",
             "https://www.cylex.no/bedrift-produkt/4-track+music+box_223139.html",
@@ -304,7 +364,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/VoltageControlledCassetteOrgan/#website",
+            "product": "https://www.dehlimusikk.no/products/voltage-controlled-cassette-organ/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/voltage-controlled-cassette-organ/",
+            "https://www.dehlimusikk.no/en/products/voltage-controlled-cassette-organ/",
             "https://store.dehlimusikk.no/l/voltage-controlled-cassette-organ",
             "https://dehlimusikk.gumroad.com/l/voltage-controlled-cassette-organ",
             "https://www.cylex.no/bedrift-produkt/voltage+controlled+cassette+organ_223138.html",
@@ -334,7 +400,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/Omni-84/#website",
+            "product": "https://www.dehlimusikk.no/products/omni-84/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/omni-84/",
+            "https://www.dehlimusikk.no/en/products/omni-84/",
             "https://store.dehlimusikk.no/l/omni-84",
             "https://dehlimusikk.gumroad.com/l/omni-84",
             "https://www.cylex.no/bedrift-produkt/omni-84_223137.html",
@@ -365,7 +437,13 @@
             "currency": "USD",
             "payWhatYouWant": true
         },
+        "jsonLdIds": {
+            "website": "https://benjamindehli.github.io/lo-fi-tape-piano/#website",
+            "product": "https://www.dehlimusikk.no/products/lo-fi-tape-piano/#product"
+        },
         "sameAs": [
+            "https://www.dehlimusikk.no/products/lo-fi-tape-piano/",
+            "https://www.dehlimusikk.no/en/products/lo-fi-tape-piano/",
             "https://store.dehlimusikk.no/l/lo-fi-tape-piano",
             "https://www.roqstar.io/item/lo-fi-tape-piano",
             "https://www.cylex.no/bedrift-produkt/lo-fi+tape+piano_223136.html",

@@ -48,6 +48,15 @@ ROOT = SITE_DIR.parent
 
 BRAND = "Dehli Musikk"
 BRAND_URL = "https://www.dehlimusikk.no/"
+
+# Stable identities for the structured data. The author is keyed by MusicBrainz
+# so the same person resolves across this site, the store and the record labels'
+# data; the organisation is keyed by its own home page.
+AUTHOR_ID = "https://musicbrainz.org/artist/56639e59-2bb5-40bd-9d5a-97d964298b6f"
+AUTHOR_NAME = "Benjamin Dehli"
+PUBLISHER_ID = BRAND_URL
+# Applies to the generated pages, not to the code (GPL-3.0) or the paid samples.
+CONTENT_LICENSE = "https://creativecommons.org/licenses/by-sa/4.0/"
 DEFAULT_STORE_URL = "https://store.dehlimusikk.no/"
 DECENT_SAMPLER_URL = "https://www.decentsamples.com/product/decent-sampler-plugin/"
 
@@ -274,7 +283,10 @@ class Images:
         self.plugin_dir = plugin_dir
         self.out_dir = out_dir
         self.encoder = encoder
+        # by_src maps every lookup key (README path or file path) to its entry;
+        # entries holds each image once, since two keys can share one entry.
         self.by_src = {}
+        self.entries = []
         self.written = set()
 
     def register(self, src: str):
@@ -315,14 +327,13 @@ class Images:
             else image_size(source),
         }
         self.by_src[key] = entry
+        self.entries.append(entry)
         return entry
 
     def emit(self) -> None:
         img_dir = self.out_dir / "img"
         img_dir.mkdir(parents=True, exist_ok=True)
-        for entry in self.by_src.values():
-            if not entry:
-                continue
+        for entry in self.entries:
             encoded = self.encoder.photo(
                 entry["source"], entry["path"], entry.get("max_width", MAX_IMAGE_WIDTH)
             )
@@ -1087,6 +1098,8 @@ def build_watch_page(video, index: int, ctx) -> None:
             "url": url,
             "name": name,
             "description": description,
+            "inLanguage": "en",
+            "isPartOf": {"@id": ctx["ids"]["website"]},
             "mainEntity": {"@id": url + "#video"},
         },
         {
@@ -1099,10 +1112,11 @@ def build_watch_page(video, index: int, ctx) -> None:
             "contentUrl": video["contentUrl"],
             "embedUrl": f"https://www.youtube.com/embed/{ident}",
             "mainEntityOfPage": {"@id": url},
-            "about": {"@id": ctx["store_url"]},
-            "publisher": {"@type": "Organization", "name": BRAND, "url": BRAND_URL},
+            "about": {"@id": ctx["ids"]["product"]},
+            "author": {"@id": AUTHOR_ID},
+            "publisher": {"@id": PUBLISHER_ID},
         },
-    ]
+    ] + author_nodes()
     uploaded = upload_datetime(video.get("uploadDate"))
     if uploaded:
         graph[1]["uploadDate"] = uploaded
@@ -1201,6 +1215,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         meta.setdefault("video", extra.get("video"))
         meta.setdefault("price", extra.get("price"))
         meta.setdefault("heroImage", extra.get("heroImage"))
+        meta.setdefault("jsonLdIds", extra.get("jsonLdIds"))
     else:
         warn(f"{plugin_dir.name}: no entry in {PLUGIN_DATA.name} for \"{title}\"")
 
@@ -1293,6 +1308,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         images.written.add("icon.png")
 
     pages = meta.get("pages")
+    ids = json_ld_ids(meta, pages, plugin_dir)
     html_text = page_html(
         title=title,
         product=meta["product"],
@@ -1320,7 +1336,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         json_ld=structured_data(
             title=title, description=description, pages=pages, store_url=store_url,
             version=version, date=date, systems=systems, hero=hero, images=images,
-            repo=meta.get("repo"), price=price,
+            repo=meta.get("repo"), price=price, ids=ids, tagline=tagline,
             same_as=meta.get("sameAs") or [], video=meta.get("video"),
         ),
     )
@@ -1334,7 +1350,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             build_watch_page(video, index, {
                 "title": title, "tagline": tagline, "pages": pages, "out_dir": out_dir,
                 "store_url": store_url, "price": price, "version": version,
-                "formats": formats, "icon": icon,
+                "formats": formats, "icon": icon, "ids": ids,
                 "cta_label": f"Download {title}" if price and float(price["minimum"]) == 0
                 else f"Get {title}",
             })
@@ -1389,23 +1405,73 @@ def seo_keywords(title: str, formats) -> str:
     return ", ".join(seen)
 
 
+def json_ld_ids(meta, pages, plugin_dir: Path):
+    """The @ids that tie these pages to the same entities as dehlimusikk.no.
+
+    They come from the data file so both sites can be kept in step by hand, but
+    the website id has to be this page's real URL or the entity points nowhere,
+    so a disagreement with the repository's actual Pages URL is reported.
+    """
+    ids = dict(meta.get("jsonLdIds") or {})
+    derived = f"{pages}#website" if pages else None
+    if derived and ids.get("website") and ids["website"] != derived:
+        warn(
+            f"{plugin_dir.name}: jsonLdIds.website is {ids['website']} but this "
+            f"repository publishes at {pages} — using {derived}"
+        )
+        ids["website"] = derived
+    ids.setdefault("website", derived)
+    ids.setdefault("product", (pages + "#software") if pages else None)
+    return ids
+
+
+def author_nodes():
+    return [
+        {"@type": "Person", "@id": AUTHOR_ID, "name": AUTHOR_NAME, "url": BRAND_URL},
+        {"@type": "Organization", "@id": PUBLISHER_ID, "name": BRAND, "url": BRAND_URL},
+    ]
+
+
+def website_node(ctx):
+    """The GitHub Pages site itself, as distinct from the instrument it documents."""
+    node = {
+        "@type": "WebSite",
+        "@id": ctx["ids"]["website"],
+        "name": ctx["title"],
+        "url": ctx["pages"],
+        "description": (
+            f"Product page and documentation for {ctx['title']}, "
+            f"a sample instrument by {BRAND}."
+        ),
+        "inLanguage": "en",
+        "author": {"@id": AUTHOR_ID},
+        "publisher": {"@id": PUBLISHER_ID},
+        "license": CONTENT_LICENSE,
+        "about": {"@id": ctx["ids"]["product"]},
+    }
+    if ctx.get("repo"):
+        node["sameAs"] = ctx["repo"]
+    return node
+
+
 def structured_data(**ctx) -> str:
     """schema.org SoftwareApplication — the rich-result payload for the page."""
     if not ctx["pages"]:
         return ""
     pages = ctx["pages"]
-    # The store product page is the canonical identity of the instrument, so the
-    # page, the store and the website all describe one and the same entity.
+    # The instrument is identified by its entry on dehlimusikk.no, so this page,
+    # that site and the store all describe one and the same entity.
     entity = {
         "@type": "SoftwareApplication",
-        "@id": ctx["store_url"] or (pages + "#software"),
+        "@id": ctx["ids"]["product"],
         "name": ctx["title"],
         "description": ctx["description"],
         "url": pages,
         "applicationCategory": "MultimediaApplication",
         "applicationSubCategory": "Sample library / virtual instrument",
-        "author": {"@type": "Organization", "name": BRAND, "url": BRAND_URL},
-        "publisher": {"@type": "Organization", "name": BRAND, "url": BRAND_URL},
+        "downloadUrl": ctx["store_url"],
+        "author": {"@id": AUTHOR_ID},
+        "publisher": {"@id": PUBLISHER_ID},
     }
     if ctx["systems"]:
         entity["operatingSystem"] = ", ".join(ctx["systems"])
@@ -1417,8 +1483,8 @@ def structured_data(**ctx) -> str:
         entity["image"] = pages + ctx["hero"]["url"]
     shots = [
         pages + entry["url"]
-        for entry in ctx["images"].by_src.values()
-        if entry and "/screenshots-" in "/" + entry["url"]
+        for entry in ctx["images"].entries
+        if "/screenshots-" in "/" + entry["url"]
     ]
     if shots:
         entity["screenshot"] = shots
@@ -1449,8 +1515,9 @@ def structured_data(**ctx) -> str:
     # The demo videos are described on their own watch pages, not here: a product
     # page is not a watch page, and Google will not index a video that is only a
     # click-to-load facade in the markup.
+    graph = [website_node(ctx), entity] + author_nodes()
     return json.dumps(
-        {"@context": "https://schema.org", "@graph": [entity]}, indent=2, ensure_ascii=False
+        {"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False
     )
 
 
