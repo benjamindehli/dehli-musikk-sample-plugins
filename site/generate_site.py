@@ -1094,6 +1094,29 @@ def build_watch_page(video, index: int, ctx) -> None:
     for fmt in ctx["formats"]:
         badges.append(f'<span class="badge">{esc(fmt)}</span>')
 
+    # Built by name, not by position in the graph: uploadDate was once assigned
+    # through graph[1] and silently moved onto the breadcrumb when a node was
+    # inserted ahead of it.
+    video_node = {
+        "@type": "VideoObject",
+        "@id": url + "#video",
+        "name": name,
+        "description": description,
+        "url": url,
+        "thumbnailUrl": [f"https://i.ytimg.com/vi/{ident}/hqdefault.jpg"],
+        "contentUrl": video["contentUrl"],
+        "embedUrl": f"https://www.youtube.com/embed/{ident}",
+        "mainEntityOfPage": {"@id": url},
+        "about": {"@id": ctx["ids"]["product"]},
+        "author": {"@id": AUTHOR_ID},
+        "publisher": {"@id": PUBLISHER_ID},
+    }
+    uploaded = upload_datetime(video.get("uploadDate"))
+    if uploaded:
+        video_node["uploadDate"] = uploaded
+    else:
+        warn(f"{ctx['title']}: video has no usable uploadDate — Google requires it")
+
     graph = [
         {
             "@type": "WebPage",
@@ -1111,24 +1134,8 @@ def build_watch_page(video, index: int, ctx) -> None:
             (ctx["title"], ctx["pages"]),
             ("Video" if index == 0 else f"Video {index + 1}", url),
         ]),
-        {
-            "@type": "VideoObject",
-            "@id": url + "#video",
-            "name": name,
-            "description": description,
-            "url": url,
-            "thumbnailUrl": [f"https://i.ytimg.com/vi/{ident}/hqdefault.jpg"],
-            "contentUrl": video["contentUrl"],
-            "embedUrl": f"https://www.youtube.com/embed/{ident}",
-            "mainEntityOfPage": {"@id": url},
-            "about": {"@id": ctx["ids"]["product"]},
-            "author": {"@id": AUTHOR_ID},
-            "publisher": {"@id": PUBLISHER_ID},
-        },
+        video_node,
     ] + author_nodes()
-    uploaded = upload_datetime(video.get("uploadDate"))
-    if uploaded:
-        graph[1]["uploadDate"] = uploaded
 
     icon_tag = f'<img src="{up}img/icon.png" alt="">' if ctx["icon"] else ""
     favicon = f'<link rel="icon" href="{up}img/icon.png">' if ctx["icon"] else ""
