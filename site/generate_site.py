@@ -55,6 +55,9 @@ BRAND_URL = "https://www.dehlimusikk.no/"
 AUTHOR_ID = "https://musicbrainz.org/artist/56639e59-2bb5-40bd-9d5a-97d964298b6f"
 AUTHOR_NAME = "Benjamin Dehli"
 PUBLISHER_ID = BRAND_URL
+# Profiles that describe the label itself, as opposed to a single product. Each
+# product's own profiles live in plugin-data.json under "sameAs".
+PUBLISHER_SAME_AS = ["https://www.kvraudio.com/developer/dehli-musikk"]
 # The pages are generated from each repository's README and are published from
 # that same repository, so they carry the repository's licence. GPL 3.0 only:
 # neither the LICENSE files nor the engine README offer the "or any later
@@ -1561,7 +1564,13 @@ def json_ld_ids(meta, pages, plugin_dir: Path):
 def author_nodes():
     return [
         {"@type": "Person", "@id": AUTHOR_ID, "name": AUTHOR_NAME, "url": BRAND_URL},
-        {"@type": "Organization", "@id": PUBLISHER_ID, "name": BRAND, "url": BRAND_URL},
+        {
+            "@type": "Organization",
+            "@id": PUBLISHER_ID,
+            "name": BRAND,
+            "url": BRAND_URL,
+            "sameAs": PUBLISHER_SAME_AS,
+        },
     ]
 
 
