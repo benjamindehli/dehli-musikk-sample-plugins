@@ -1635,7 +1635,7 @@ def build_watch_page(video, index: int, ctx) -> None:
             "mainEntity": {"@id": url + "#video"},
         },
         breadcrumb_node(url + "#breadcrumb", [
-            (BRAND, BRAND_URL),
+            (AUTHOR_NAME, site_root(ctx["pages"])),
             (ctx["title"], ctx["pages"]),
             ("Video" if index == 0 else f"Video {index + 1}", url),
         ]),
@@ -2138,8 +2138,21 @@ def author_nodes():
     ]
 
 
+def site_root(pages: str) -> str:
+    """The root of the domain this page is published on, e.g. the user site that
+    every product site sits under as a project site."""
+    parts = urllib.parse.urlsplit(pages)
+    return f"{parts.scheme}://{parts.netloc}/"
+
+
 def breadcrumb_node(identifier: str, trail):
-    """A trail of (name, url) pairs, so results show the path rather than a URL."""
+    """A trail of (name, url) pairs, so results show the path rather than a URL.
+
+    Every step stays on this domain. A breadcrumb states where the page sits in
+    the hierarchy it is published in, so opening the trail on another site was
+    describing a position this page does not occupy, and search engines drop a
+    trail that wanders off the host rather than showing it.
+    """
     return {
         "@type": "BreadcrumbList",
         "@id": identifier,
@@ -2300,7 +2313,7 @@ def structured_data(**ctx) -> str:
     # page is not a watch page, and Google will not index a video that is only a
     # click-to-load facade in the markup.
     crumbs = breadcrumb_node(
-        pages + "#breadcrumb", [(BRAND, BRAND_URL), (ctx["title"], pages)]
+        pages + "#breadcrumb", [(AUTHOR_NAME, site_root(pages)), (ctx["title"], pages)]
     )
     graph = [website_node(ctx), webpage_node(ctx), crumbs, entity] + author_nodes()
     faq = faq_node(ctx.get("faq"), pages, ctx["title"])
