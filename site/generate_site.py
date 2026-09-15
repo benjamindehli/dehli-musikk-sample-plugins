@@ -1435,6 +1435,140 @@ def render_video(videos, title: str, pages=None) -> str:
     )
 
 
+# ── markdown twin ────────────────────────────────────────────────────────────
+
+def absolutize_images(text: str, images: Images, pages: str) -> str:
+    """Point the README's image paths at the copies published beside the page.
+
+    The README writes /Screenshots/Chords.png, which resolves against the
+    repository rather than the site. Every one of those has already been
+    re-encoded into img/ by the time this runs, so the mapping is a lookup.
+    """
+    def replace(match):
+        entry = images.by_src.get(match.group(2).strip())
+        if not entry:
+            return match.group(0)
+        return f"![{match.group(1)}]({pages + entry['url']})"
+
+    return IMG_RE.sub(replace, text)
+
+
+def markdown_twin(ctx, readme_text: str) -> str:
+    """The page as markdown, for readers that would rather not parse HTML.
+
+    The README is already the manual, so it is carried over whole rather than
+    re-rendered: what is added in front of it is the part a reader of the page
+    gets and a reader of the raw README does not, which is the summary, the
+    links off the page and the FAQ.
+    """
+    pages = ctx["pages"]
+    out = [f"# {ctx['title']}", ""]
+    if ctx["description"]:
+        out += [f"> {strip_markdown(ctx['description'])}", ""]
+    out += [
+        f"A sample instrument by {BRAND}. This is the markdown version of {pages}, "
+        "generated from the repository README.",
+        "",
+    ]
+
+    if ctx["glance"]:
+        out += ["## Key facts", ""]
+        out += [f"- {term}: {definition}" for term, definition in ctx["glance"]]
+        out.append("")
+
+    links = [("Product page", pages)]
+    if ctx.get("product_page"):
+        links.append((f"{ctx['title']} at {BRAND}", ctx["product_page"]))
+    links.append(("Get it", ctx["store_url"]))
+    if ctx.get("repo"):
+        links.append(("Source on GitHub", ctx["repo"]))
+    for index, video in enumerate(ctx.get("videos") or []):
+        name = pick_language(video.get("name")) or f"{ctx['title']} demo"
+        links.append((name, watch_url(pages, index)))
+    out += ["## Links", ""]
+    out += [f"- [{name}]({url})" for name, url in links]
+    out.append("")
+
+    if ctx["faq"]:
+        out += ["## Frequently asked questions", ""]
+        for question, answer in ctx["faq"]:
+            out += [f"### {question}", "", answer, ""]
+
+    # The README's own headings follow as siblings of the ones above, so its H1
+    # goes: the document already has one. The line linking to the product page
+    # goes for the same reason the rendered page drops it, which is that the
+    # reader is holding that page already.
+    body = readme_text.replace("\r\n", "\n")
+    body = re.sub(r"\A\s*#\s+[^\n]*\n", "", body)
+    body = "\n".join(
+        line for line in body.split("\n") if not is_self_link(line, pages)
+    ).strip()
+    out += ["---", "", absolutize_images(body, ctx["images"], pages), ""]
+    return "\n".join(out)
+
+
+SELF_LINK_RE = re.compile(r"^\s*\**\[[^\]]+\]\(([^)\s]+)\)\**\s*$")
+
+
+def is_self_link(line: str, pages: str) -> bool:
+    """True for a line that is nothing but a link back to this very page."""
+    match = SELF_LINK_RE.match(line)
+    return bool(match and match.group(1).rstrip("/") == pages.rstrip("/"))
+
+
+def build_root_llms(data) -> None:
+    """An llms.txt index of the instruments, for the user site to publish.
+
+    Written next to the sitemap index and for the same reason: one URL at the
+    domain root that leads to all thirteen, rather than thirteen that have to be
+    found first.
+    """
+    rows = []
+    for plugin_dir in sorted(ROOT.glob("*-plugin")):
+        if not (plugin_dir / "README.md").is_file():
+            continue
+        meta = read_meta(plugin_dir)
+        if not meta.get("pages"):
+            continue
+        title = read_title(plugin_dir)
+        extra = lookup_extra(data, [title, meta["product"], plugin_dir.name])
+        description = strip_markdown(extra.get("description") or "")
+        # The shared descriptions open with the product's own name, which reads
+        # as a stutter once the name is already the link text.
+        description = re.sub(rf"^{re.escape(title)}:\s*", "", description, flags=re.I)
+        if description:
+            description = description[0].upper() + description[1:]
+        rows.append((title, meta["pages"], description))
+    if not rows:
+        return
+
+    out = [
+        f"# {BRAND} sample instruments",
+        "",
+        f"> Sampled instruments by {AUTHOR_NAME}, each released both as a macOS plugin "
+        "(VST3, AU and standalone) and as a Decent Sampler library for macOS, Windows "
+        "and Linux.",
+        "",
+        f"Every instrument has its own product page with the full manual. The store is "
+        f"{DEFAULT_STORE_URL} and the label's site is {BRAND_URL}",
+        "",
+        "## Instruments",
+        "",
+    ]
+    out += [
+        f"- [{title}]({pages}){f': {description}' if description else ''}"
+        for title, pages, description in rows
+    ]
+    out += ["", "## Full documentation in markdown", ""]
+    out += [f"- [{title}]({pages}llms.txt)" for title, pages, _ in rows]
+    out.append("")
+
+    out_dir = SITE_DIR / "user-site"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "llms.txt").write_text("\n".join(out), encoding="utf-8")
+    info(f"llms.txt index for {len(rows)} instruments → {out_dir.relative_to(ROOT)}/")
+
+
 # ── page assembly ────────────────────────────────────────────────────────────
 
 def watch_url(pages: str, index: int) -> str:
@@ -1624,8 +1758,14 @@ def build_root_sitemap(data) -> None:
     (out_dir / "README.md").write_text(
         "# Files for the user site\n\n"
         f"Generated by `./dmse site`. The user site is the `{host}` repository, an\n"
-        "Astro project that publishes from `docs/`, so copy `sitemap-index.xml` into its\n"
-        "`public/` folder and let the build carry it to the domain root.\n\n"
+        "Astro project that publishes from `docs/`, so copy `sitemap-index.xml` and\n"
+        "`llms.txt` into its `public/` folder and let the build carry them to the domain\n"
+        "root.\n\n"
+        "`llms.txt` is the index an answer engine reads to find the instruments: one entry\n"
+        "per product with a one-line description, and a link to the full markdown manual\n"
+        "each product site publishes at `/<Repo>/llms.txt`. If the user site grows a wider\n"
+        "`llms.txt` of its own, keep the instrument sections and add the rest around them\n"
+        "rather than keeping two competing files.\n\n"
         "A `robots.txt` is only honoured at the root of a domain, so the one each plugin site\n"
         f"generates at `/<Repo>/robots.txt` is never read by a crawler. The `{host}` one is,\n"
         "and it needs a single line added so the index is found:\n\n"
@@ -1875,6 +2015,22 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     (out_dir / "index.html").write_text(html_text, encoding="utf-8")
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
     shutil.copy2(SITE_DIR / "style.css", out_dir / "style.css")
+
+    # Written after the page, because the image map it rewrites paths against is
+    # only complete once everything has been rendered and emitted.
+    if pages:
+        (out_dir / "llms.txt").write_text(
+            markdown_twin(
+                {
+                    "title": title, "description": description, "pages": pages,
+                    "glance": glance, "faq": faq, "store_url": store_url,
+                    "product_page": product_page_url(meta), "repo": meta.get("repo"),
+                    "videos": videos, "images": images,
+                },
+                readme.read_text(encoding="utf-8"),
+            ),
+            encoding="utf-8",
+        )
 
     # Each video gets its own watch page; the product page only links to them.
     if pages:
@@ -2238,6 +2394,13 @@ def page_html(**ctx) -> str:
     topbar_icon = f'<img src="{ctx["icon"]}" alt="">' if ctx["icon"] else ""
     favicon = f'<link rel="icon" href="{ctx["icon"]}">' if ctx["icon"] else ""
     canonical = f'<link rel="canonical" href="{esc(ctx["pages"])}">' if ctx.get("pages") else ""
+    # The same page as markdown, for anything that would rather not parse HTML.
+    markdown_link = (
+        '<link rel="alternate" type="text/markdown" href="llms.txt" '
+        f'title="{esc(ctx["title"])} as markdown">'
+        if ctx.get("pages")
+        else ""
+    )
     og_url = f'<meta property="og:url" content="{esc(ctx["pages"])}">' if ctx.get("pages") else ""
     og_image = ""
     if ctx.get("pages") and ctx["hero"]:
@@ -2318,6 +2481,7 @@ def page_html(**ctx) -> str:
 <meta name="theme-color" content="#a35a2a" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17161a" media="(prefers-color-scheme: dark)">
 {canonical}
+{markdown_link}
 <meta property="og:type" content="product">
 <meta property="og:site_name" content="{BRAND}">
 <meta property="og:locale" content="en_GB">
@@ -2475,6 +2639,7 @@ def main(argv=None) -> int:
         info(f"{plugin_dir.name} → {out_dir.relative_to(ROOT)}/index.html")
 
     build_root_sitemap(data)
+    build_root_llms(data)
     return 0
 
 

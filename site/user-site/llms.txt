@@ -1,0 +1,37 @@
+# Dehli Musikk sample instruments
+
+> Sampled instruments by Benjamin Dehli, each released both as a macOS plugin (VST3, AU and standalone) and as a Decent Sampler library for macOS, Windows and Linux.
+
+Every instrument has its own product page with the full manual. The store is https://store.dehlimusikk.no/ and the label's site is https://www.dehlimusikk.no/
+
+## Instruments
+
+- [4-track Glockenspiel](https://benjamindehli.github.io/4-track-glockenspiel/): A glockenspiel on cassette tape at normal and half speed, so every note also plays an octave down. For VST3, AU and Decent Sampler.
+- [4-track Music Box](https://benjamindehli.github.io/4-track-music-box/): A music box on cassette tape at normal and half speed, layering the original pitch an octave below. For VST3, AU and Decent Sampler.
+- [4-track Toy Piano](https://benjamindehli.github.io/4-track-toy-piano/): A Kalikå Leksakspiano on cassette tape at normal and half speed, playable an octave down. For VST3, AU and Decent Sampler.
+- [EDB-Orgel](https://benjamindehli.github.io/EDB-Orgel/): Four digital synthesis types with the workflow of a drawbar organ crossed with an analog synth. For VST3, AU and Decent Sampler.
+- [Elektrisk Salmesykkel](https://benjamindehli.github.io/ElektriskSalmesykkel/): A Yamaha L-20D electric harmonium with tremulant, noise and reverb, and an air supply that sags as more notes are held.
+- [Lo-fi Tape Piano](https://benjamindehli.github.io/lo-fi-tape-piano/): A Louis Zwicki Pianette recorded to cassette through three microphones, with tape compression, wow and flutter. VST3, AU, Decent Sampler.
+- [Maskintrommer](https://benjamindehli.github.io/MaskinTrommer/): Electronic drums from a Korg MS-20, Roland SH-09, Doepfer Dark Energy and Sequential Pro-One, with many samples per sound.
+- [Midnight Wurli](https://benjamindehli.github.io/MidnightWurli/): A Wurlitzer 200A played softly, sampled from the line out and a contact microphone that captures key clicks and pedal noise.
+- [Omni-84](https://benjamindehli.github.io/Omni-84/): The Suzuki Omnichord OM-84 sampled in full, from drums and bass to chords, keyboard and AutoStrum SonicStrings. Free for VST3 and AU.
+- [Strykebrett](https://benjamindehli.github.io/Strykebrett/): A sampled Logan String Melody II string synthesiser with ensemble, phaser, echo and reverb. For VST3, AU and Decent Sampler.
+- [StyloPoly](https://benjamindehli.github.io/StyloPoly/): A Dubreq Stylophone S-1 made polyphonic, blending its three voices with noise, vibrato and filters. For VST3, AU and Decent Sampler.
+- [SubC](https://benjamindehli.github.io/SubC/): A Dreadbox Erebus v2 triangle oscillator run through saturation circuits and effects, in mono and stereo. For VST3, AU and Decent Sampler.
+- [Voltage Controlled Cassette Organ](https://benjamindehli.github.io/VoltageControlledCassetteOrgan/): A Korg CX-3 sampled through cassette tape, where wow, flutter and warble add organic movement to the drawbars.
+
+## Full documentation in markdown
+
+- [4-track Glockenspiel](https://benjamindehli.github.io/4-track-glockenspiel/llms.txt)
+- [4-track Music Box](https://benjamindehli.github.io/4-track-music-box/llms.txt)
+- [4-track Toy Piano](https://benjamindehli.github.io/4-track-toy-piano/llms.txt)
+- [EDB-Orgel](https://benjamindehli.github.io/EDB-Orgel/llms.txt)
+- [Elektrisk Salmesykkel](https://benjamindehli.github.io/ElektriskSalmesykkel/llms.txt)
+- [Lo-fi Tape Piano](https://benjamindehli.github.io/lo-fi-tape-piano/llms.txt)
+- [Maskintrommer](https://benjamindehli.github.io/MaskinTrommer/llms.txt)
+- [Midnight Wurli](https://benjamindehli.github.io/MidnightWurli/llms.txt)
+- [Omni-84](https://benjamindehli.github.io/Omni-84/llms.txt)
+- [Strykebrett](https://benjamindehli.github.io/Strykebrett/llms.txt)
+- [StyloPoly](https://benjamindehli.github.io/StyloPoly/llms.txt)
+- [SubC](https://benjamindehli.github.io/SubC/llms.txt)
+- [Voltage Controlled Cassette Organ](https://benjamindehli.github.io/VoltageControlledCassetteOrgan/llms.txt)
