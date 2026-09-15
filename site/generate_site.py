@@ -2108,6 +2108,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     if faq_link and not faq_anchor:
         toc.append(faq_link)
 
+    product_page, product_page_no = product_pages(meta)
     more_html = render_more(sibling_plugins(plugin_dir, data), images)
 
     # Images are written before the HTML so fallback dimensions are known.
@@ -2140,7 +2141,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         slug=meta.get("slug"),
         pages=pages,
         store_url=store_url,
-        product_page=product_page_url(meta),
+        product_page=product_page, product_page_no=product_page_no,
         price=price,
         toc="".join(toc),
         body="\n".join(body),
@@ -2171,7 +2172,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
                 {
                     "title": title, "description": description, "pages": pages,
                     "glance": glance, "faq": faq, "store_url": store_url,
-                    "product_page": product_page_url(meta), "repo": meta.get("repo"),
+                    "product_page": product_page, "repo": meta.get("repo"),
                     "videos": videos, "images": images,
                 },
                 readme.read_text(encoding="utf-8"),
@@ -2243,12 +2244,20 @@ def seo_keywords(title: str, formats) -> str:
     return ", ".join(seen)
 
 
-def product_page_url(meta):
-    """The instrument's page on dehlimusikk.no, taken from sameAs. These pages are
-    English, so the English variant wins when both are listed."""
+def product_pages(meta):
+    """(English, Norwegian) pages for the instrument on dehlimusikk.no, from sameAs.
+
+    Deliberately linked rather than declared as hreflang alternates. hreflang
+    says two URLs are the same content in another language and is only honoured
+    when both sides point at each other. Neither is true here: this page carries
+    the whole manual, the pages on dehlimusikk.no do not, and those two already
+    form their own no/en pair, so they will never point back at this one. A link
+    tells a Norwegian reader where to go without making a claim that is false.
+    """
     urls = [u for u in (meta.get("sameAs") or []) if "dehlimusikk.no/" in u and "/products/" in u]
-    english = [u for u in urls if "/en/products/" in u]
-    return (english or urls or [None])[0]
+    english = next((u for u in urls if "/en/products/" in u), None)
+    norwegian = next((u for u in urls if "/en/products/" not in u), None)
+    return english or norwegian, norwegian if english else None
 
 
 def json_ld_ids(meta, pages, plugin_dir: Path):
@@ -2619,6 +2628,15 @@ def page_html(**ctx) -> str:
         if ctx.get("product_page")
         else ""
     )
+    # hreflang and lang on the anchor are advisory: they say the page at the end
+    # of this link is in Norwegian. That is different from rel="alternate", which
+    # would claim it is this page translated, and it is not.
+    norwegian_link = (
+        f'<a href="{esc(ctx["product_page_no"])}" hreflang="no" lang="no" '
+        'target="_blank" rel="noopener">På norsk</a>'
+        if ctx.get("product_page_no")
+        else ""
+    )
     repo_footer = (
         f'<a href="{esc(ctx["repo"])}" target="_blank" rel="noopener">Source on GitHub</a>'
         if ctx["repo"]
@@ -2698,6 +2716,7 @@ def page_html(**ctx) -> str:
   {topbar_icon}
   <nav>
     {product_page_link}
+    {norwegian_link}
     <a href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Store</a>
     <a href="{BRAND_URL}" target="_blank" rel="noopener">{BRAND}</a>
     <a href="{DECENT_SAMPLER_URL}" target="_blank" rel="noopener">Decent Sampler</a>
