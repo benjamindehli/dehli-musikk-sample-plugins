@@ -1349,6 +1349,23 @@ def git_remote(plugin_dir: Path):
     return (url, None) if url else (None, "origin is configured with no URL")
 
 
+_STYLESHEET = None
+
+
+def stylesheet() -> str:
+    """The shared stylesheet, for inlining into the page.
+
+    At 3.6 kB compressed it is cheaper to send with the HTML than to make the
+    browser discover it, request it and wait for it before painting anything.
+    The hero image is preloaded precisely so first paint is not held up, and an
+    external stylesheet put that wait straight back in front of it.
+    """
+    global _STYLESHEET
+    if _STYLESHEET is None:
+        _STYLESHEET = (SITE_DIR / "style.css").read_text(encoding="utf-8").strip()
+    return _STYLESHEET
+
+
 _META_CACHE = {}
 
 
@@ -1790,7 +1807,9 @@ def build_watch_page(video, index: int, ctx) -> None:
 <meta name="twitter:title" content="{esc(name)}">
 <meta name="twitter:description" content="{esc(summarize(description))}">
 {favicon}
-<link rel="stylesheet" href="{up}style.css">
+<style>
+{stylesheet()}
+</style>
 <script type="application/ld+json">
 {json.dumps({"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False)}
 </script>
@@ -1920,7 +1939,9 @@ def build_404_page(ctx) -> None:
 <meta name="theme-color" content="#a35a2a" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17161a" media="(prefers-color-scheme: dark)">
 {favicon}
-<link rel="stylesheet" href="{base}style.css">
+<style>
+{stylesheet()}
+</style>
 </head>
 <body>
 
@@ -2136,7 +2157,11 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     )
     (out_dir / "index.html").write_text(html_text, encoding="utf-8")
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
-    shutil.copy2(SITE_DIR / "style.css", out_dir / "style.css")
+    # The stylesheet is inlined into each page now, so the copy that used to sit
+    # here is dead weight and, worse, a second stylesheet that could go stale.
+    stale_css = out_dir / "style.css"
+    if stale_css.is_file():
+        stale_css.unlink()
 
     # Written after the page, because the image map it rewrites paths against is
     # only complete once everything has been rendered and emitted.
@@ -2627,7 +2652,9 @@ def page_html(**ctx) -> str:
 <meta name="twitter:description" content="{esc(ctx["description"])}">
 {favicon}
 {preload}
-<link rel="stylesheet" href="style.css">
+<style>
+{stylesheet()}
+</style>
 {json_ld}
 </head>
 <body>

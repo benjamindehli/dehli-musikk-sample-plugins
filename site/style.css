@@ -1,8 +1,9 @@
-/* Dehli Musikk plugin pages — shared stylesheet.
+/* Dehli Musikk plugin pages, shared stylesheet.
  *
- * Generated into every plugin repo's docs/ folder by site/generate_site.py.
- * Edit it HERE, not in a docs/ folder: the copies are overwritten on the next
- * ./dmse site run. */
+ * This is the only copy. site/generate_site.py inlines it into every page it
+ * writes, so there is no stylesheet to request before the page can paint, and
+ * no second copy in a docs/ folder that could drift out of step with this one.
+ * Edit it here and re-run ./dmse site. */
 
 :root {
     color-scheme: light dark;
