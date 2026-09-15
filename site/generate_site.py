@@ -2511,10 +2511,14 @@ def structured_data(**ctx) -> str:
     pages = ctx["pages"]
     # The instrument is identified by its entry on dehlimusikk.no, so this page,
     # that site and the store all describe one and the same entity.
+    # Also a Product when there is a price to pay, so the offer below is read by
+    # the shopping surfaces as well as the software ones. A free instrument stays
+    # SoftwareApplication alone: merchant listings require a price above zero, so
+    # typing a free product as Product invites a warning for no benefit, and
+    # isAccessibleForFree already says what there is to say.
+    paid = ctx.get("price") and float(ctx["price"]["minimum"]) > 0
     entity = {
-        # Also a Product, so the offer below is read by the shopping surfaces as
-        # well as the software ones. It is both, and saying so costs nothing.
-        "@type": ["SoftwareApplication", "Product"],
+        "@type": ["SoftwareApplication", "Product"] if paid else "SoftwareApplication",
         "@id": ctx["ids"]["product"],
         "name": ctx["title"],
         "description": ctx["description"],
