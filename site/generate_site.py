@@ -696,14 +696,16 @@ def latest_release(section):
 
 
 def format_details(section):
-    """(format names, operating systems) from the 'Included formats' list.
+    """(format names, operating systems, per-format entries) from 'Included formats'.
 
     The list reads "VST3 (macOS)", "Decent Sampler (macOS, Windows and Linux)",
-    which gives both the badges and an accurate schema.org operatingSystem.
+    which gives the badges, an accurate schema.org operatingSystem, and — kept
+    per entry rather than flattened — which platform each format actually runs
+    on, so the FAQ can say the plugin is macOS only without guessing.
     """
     if not section:
-        return [], []
-    names, systems = [], []
+        return [], [], []
+    names, systems, entries = [], [], []
     for block in section["blocks"]:
         if block["type"] != "list":
             continue
@@ -712,13 +714,165 @@ def format_details(section):
             name = raw.split(" (")[0].replace(" application", "").strip()
             if name and name not in names:
                 names.append(name)
+            own = []
             inside = re.search(r"\(([^)]+)\)", raw)
             if inside:
                 for system in re.split(r",|\band\b", inside.group(1)):
                     system = system.strip()
-                    if system and system not in systems:
+                    if not system:
+                        continue
+                    own.append(system)
+                    if system not in systems:
                         systems.append(system)
-    return names, systems
+            if name:
+                entries.append({"name": name, "systems": own})
+    return names, systems, entries
+
+
+DECENT_SAMPLER_NAME = "decent sampler"
+
+
+def join_words(words) -> str:
+    """"VST3, AU and Standalone" — a list as a reader would say it out loud."""
+    words = [w for w in words if w]
+    if not words:
+        return ""
+    if len(words) == 1:
+        return words[0]
+    return ", ".join(words[:-1]) + " and " + words[-1]
+
+
+def build_faq(title: str, description: str, entries, price, store_url: str, repo):
+    """The questions a buyer actually types, answered from what the README says.
+
+    Every answer here is assembled from facts the repository already states: the
+    'Included formats' list, the price in the shared data file, and the two
+    paragraphs every README carries about the plugin being self-contained and
+    the samples not being in the repository. Nothing is invented, because an FAQ
+    that drifts from the manual is worse than no FAQ at all.
+    """
+    faq = []
+
+    plugin_formats = [e for e in entries if DECENT_SAMPLER_NAME not in e["name"].lower()]
+    sampler = next((e for e in entries if DECENT_SAMPLER_NAME in e["name"].lower()), None)
+    plugin_names = [e["name"] for e in plugin_formats]
+    plugin_systems = []
+    for entry in plugin_formats:
+        for system in entry["systems"]:
+            if system not in plugin_systems:
+                plugin_systems.append(system)
+
+    if description:
+        faq.append((f"What is {title}?", strip_markdown(description)))
+
+    if plugin_names:
+        answer = (
+            f"{title} is available as {join_words(plugin_names)}"
+            + (f" for {join_words(plugin_systems)}" if plugin_systems else "")
+        )
+        if sampler:
+            answer += (
+                f", and as a Decent Sampler library"
+                + (f" for {join_words(sampler['systems'])}" if sampler["systems"] else "")
+            )
+        faq.append((f"Which formats does {title} come in?", answer + "."))
+
+    # Only claimed when the formats list actually says so, rather than assumed.
+    other_systems = [s for s in (sampler["systems"] if sampler else []) if s not in plugin_systems]
+    if plugin_systems == ["macOS"] and other_systems:
+        faq.append((
+            f"Does {title} run on Windows or Linux?",
+            f"The plugin version is released for macOS only. On {join_words(other_systems)}, "
+            f"the Decent Sampler version of {title} covers the same instrument.",
+        ))
+
+    if "VST3" in plugin_names and "AU" in plugin_names:
+        faq.append((
+            f"Does {title} work in Logic Pro and Ableton Live?",
+            f"Yes. {title} is available as both VST3 and AU, so it loads in any macOS host "
+            "that reads those formats, including Logic Pro, Ableton Live, Cubase, Reaper "
+            "and Studio One.",
+        ))
+
+    if sampler:
+        faq.append((
+            f"Do I need Decent Sampler to use {title}?",
+            "Not for the plugin version. It is a self-contained instrument with its samples "
+            "embedded, so there are no external files to install or locate. The Decent Sampler "
+            "version is a sample library, and that one needs the free Decent Sampler "
+            "application.",
+        ))
+
+    if price:
+        free = float(price["minimum"]) == 0
+        if free and price["payWhatYouWant"]:
+            cost = f"{title} is free, and the store lets you pay what you want for it."
+        elif free:
+            cost = f"{title} is free."
+        elif price["payWhatYouWant"]:
+            cost = (
+                f"{title} is pay what you want, from {format_price(price)}, "
+                "so the price shown is the minimum rather than a fixed one."
+            )
+        else:
+            cost = f"{title} costs {format_price(price)}."
+        faq.append((f"How much does {title} cost?", cost))
+
+    if store_url:
+        faq.append((
+            f"Where can I download {title}?",
+            f"From the Dehli Musikk store at {store_url}.",
+        ))
+
+    if repo:
+        samples = (
+            "The audio files are not in the repository and come with the download."
+            if price and float(price["minimum"]) == 0
+            else "The audio files are not in the repository, because the samples are a paid product."
+        )
+        faq.append((
+            f"Is the source code for {title} available?",
+            f"Yes. The repository is public at {repo} and licensed under GPL-3.0. {samples}",
+        ))
+
+    return faq
+
+
+def render_faq(faq) -> str:
+    """Rendered so the visible answer and the Answer.text in the graph match word
+    for word, which is what the structured data is required to claim."""
+    if not faq:
+        return ""
+    items = "".join(
+        f'<details class="faq-item"><summary>{html.escape(question)}</summary>'
+        f'<div class="body"><p>{html.escape(answer)}</p></div></details>'
+        for question, answer in faq
+    )
+    return (
+        '<section id="faq">'
+        '<h2><a class="anchor" href="#faq" aria-hidden="true">#</a>'
+        "Frequently asked questions</h2>"
+        f'<div class="faq">{items}</div></section>'
+    )
+
+
+def faq_node(faq, pages: str, title: str):
+    if not faq:
+        return None
+    return {
+        "@type": "FAQPage",
+        "@id": pages + "#faq",
+        "name": f"Frequently asked questions about {title}",
+        "isPartOf": {"@id": pages},
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": question,
+                "acceptedAnswer": {"@type": "Answer", "text": answer},
+            }
+            for question, answer in faq
+        ],
+    }
 
 
 def split_releases(section, renderer: Renderer):
@@ -1369,7 +1523,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     releases = take_section(sections, RELEASE_SECTION)
     version, date = latest_release(releases)
     version = version or meta.get("version")
-    formats, systems = format_details(find_section(sections, FORMATS_SECTION))
+    formats, systems, format_entries = format_details(find_section(sections, FORMATS_SECTION))
 
     # Release history goes after the manual, just before the repository notes.
     about = find_section(sections, ABOUT_SECTION)
@@ -1399,8 +1553,21 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     videos = normalize_videos(meta.get("video"))
     video_html = render_video(videos, title, meta.get("pages")) if videos else ""
 
+    store_url = meta.get("storeUrl") or DEFAULT_STORE_URL
+    price = normalize_price(meta.get("price"), meta.get("currency", "USD"))
+    description = meta.get("description") or seo_description(title, tagline)
+
+    # The FAQ sits after the manual and before the release history: the manual is
+    # what a reader came for, and the questions are what someone arriving from a
+    # search still wants answered once they have skimmed it.
+    faq = build_faq(title, description, format_entries, price, store_url, meta.get("repo"))
+    faq_html = render_faq(faq)
+    faq_anchor = releases or about
+
     body = [video_html] if video_html else []
     for section in sections:
+        if section is faq_anchor and faq_html:
+            body.append(faq_html)
         content = (
             split_releases(section, renderer)
             if section is releases
@@ -1411,9 +1578,14 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             f'<h2><a class="anchor" href="#{section["slug"]}" aria-hidden="true">#</a>'
             f'{renderer.inline(section["title"])}</h2>{content}</section>'
         )
+    if faq_html and not faq_anchor:
+        body.append(faq_html)
 
+    faq_link = '<li><a href="#faq">Frequently asked questions</a></li>' if faq_html else ""
     toc = ['<li><a href="#demo-video">Video</a></li>'] if video_html else []
     for section in sections:
+        if section is faq_anchor and faq_link:
+            toc.append(faq_link)
         subs = "" if section is releases else "".join(
             f'<li><a href="#{s["slug"]}">{html.escape(s["text"])}</a></li>'
             for s in section_subheadings(section)
@@ -1423,10 +1595,9 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             + (f"<ul>{subs}</ul>" if subs else "")
             + "</li>"
         )
+    if faq_link and not faq_anchor:
+        toc.append(faq_link)
 
-    store_url = meta.get("storeUrl") or DEFAULT_STORE_URL
-    price = normalize_price(meta.get("price"), meta.get("currency", "USD"))
-    description = meta.get("description") or seo_description(title, tagline)
     more_html = render_more(sibling_plugins(plugin_dir, data), images)
 
     # Images are written before the HTML so fallback dimensions are known.
@@ -1469,7 +1640,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             title=title, description=description, pages=pages, store_url=store_url,
             version=version, date=date, systems=systems, hero=hero, images=images,
             repo=meta.get("repo"), price=price, ids=ids, tagline=tagline,
-            same_as=meta.get("sameAs") or [], video=meta.get("video"),
+            same_as=meta.get("sameAs") or [], video=meta.get("video"), faq=faq,
         ),
     )
     (out_dir / "index.html").write_text(html_text, encoding="utf-8")
@@ -1608,6 +1779,10 @@ def webpage_node(ctx):
         "mainEntity": {"@id": ctx["ids"]["product"]},
         "breadcrumb": {"@id": ctx["pages"] + "#breadcrumb"},
     }
+    # The FAQ is a part of this page, not the whole of it: typing the product
+    # page itself as an FAQPage would claim the manual is a list of questions.
+    if ctx.get("faq"):
+        node["hasPart"] = {"@id": ctx["pages"] + "#faq"}
     if ctx["hero"]:
         image = {"@type": "ImageObject", "url": ctx["pages"] + ctx["hero"]["url"]}
         size = ctx["hero"]["size"]
@@ -1708,6 +1883,9 @@ def structured_data(**ctx) -> str:
         pages + "#breadcrumb", [(BRAND, BRAND_URL), (ctx["title"], pages)]
     )
     graph = [website_node(ctx), webpage_node(ctx), crumbs, entity] + author_nodes()
+    faq = faq_node(ctx.get("faq"), pages, ctx["title"])
+    if faq:
+        graph.append(faq)
     return json.dumps(
         {"@context": "https://schema.org", "@graph": graph}, indent=2, ensure_ascii=False
     )
