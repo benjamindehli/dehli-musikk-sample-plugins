@@ -1221,6 +1221,60 @@ def pick_language(value, language: str = "en"):
     return value or ""
 
 
+ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_COMMIT_DATE_CACHE = {}
+
+
+def last_commit_date(path: Path):
+    """YYYY-MM-DD of the commit that last touched path, or None.
+
+    Unlike the remote lookup this is allowed to fail quietly: a page with a
+    slightly stale lastmod is a far smaller problem than one that stops being
+    written, and the release date is a reasonable thing to fall back to.
+    """
+    if path in _COMMIT_DATE_CACHE:
+        return _COMMIT_DATE_CACHE[path]
+    date = None
+    if path.is_file():
+        try:
+            done = subprocess.run(
+                ["git", "-C", str(path.parent), "log", "-1",
+                 "--date=short", "--format=%cd", "--", path.name],
+                capture_output=True, text=True,
+            )
+            found = done.stdout.strip()
+            if done.returncode == 0 and ISO_DATE_RE.fullmatch(found):
+                date = found
+        except OSError:
+            pass
+    _COMMIT_DATE_CACHE[path] = date
+    return date
+
+
+def page_modified(plugin_dir: Path, release_date):
+    """When this page last changed, which is when the things it is built from
+    last changed: the README it renders, the shared product data, and the
+    generator and stylesheet that decide what the page looks like.
+
+    The release date is not that. A README gets corrected and expanded between
+    releases, and every page was claiming the release date as its dateModified
+    while carrying text written weeks later.
+    """
+    dates = [
+        date
+        for date in (
+            last_commit_date(plugin_dir / "README.md"),
+            last_commit_date(PLUGIN_DATA),
+            last_commit_date(Path(__file__).resolve()),
+            last_commit_date(SITE_DIR / "style.css"),
+        )
+        if date
+    ]
+    if dates:
+        return max(dates)
+    return release_date if ISO_DATE_RE.fullmatch(release_date or "") else None
+
+
 def git_remote(plugin_dir: Path):
     """(origin URL, why it could not be read).
 
@@ -1638,6 +1692,7 @@ def build_watch_page(video, index: int, ctx) -> None:
             "isPartOf": {"@id": ctx["ids"]["website"]},
             "breadcrumb": {"@id": url + "#breadcrumb"},
             "mainEntity": {"@id": url + "#video"},
+            **({"dateModified": ctx["modified"]} if ctx.get("modified") else {}),
         },
         breadcrumb_node(url + "#breadcrumb", [
             (AUTHOR_NAME, site_root(ctx["pages"])),
@@ -1883,6 +1938,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     version, date = latest_release(releases)
     version = version or meta.get("version")
     formats, systems, format_entries = format_details(find_section(sections, FORMATS_SECTION))
+    modified = page_modified(plugin_dir, date)
     spec = parse_spec(find_section(sections, SPEC_SECTION))
     if not spec:
         warn(f"{plugin_dir.name}: no readable '{SPEC_SECTION}' — the summary will be thinner")
@@ -2013,7 +2069,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             version=version, date=date, systems=systems, hero=hero, images=images,
             repo=meta.get("repo"), price=price, ids=ids, tagline=tagline,
             same_as=meta.get("sameAs") or [], video=meta.get("video"), faq=faq,
-            spec=spec, format_entries=format_entries,
+            spec=spec, format_entries=format_entries, modified=modified,
             release_slug=releases["slug"] if releases else None,
         ),
     )
@@ -2047,16 +2103,15 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             build_watch_page(video, index, {
                 "title": title, "tagline": tagline, "pages": pages, "out_dir": out_dir,
                 "store_url": store_url, "price": price, "version": version,
-                "formats": formats, "icon": icon, "ids": ids,
+                "formats": formats, "icon": icon, "ids": ids, "modified": modified,
                 "cta_label": f"Download {title}" if price and float(price["minimum"]) == 0
                 else f"Get {title}",
             })
         prune_watch_pages(out_dir, len(videos))
 
     if pages:
-        lastmod = date if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or "") else None
         (out_dir / "sitemap.xml").write_text(
-            sitemap_xml(pages, lastmod, videos, title), encoding="utf-8"
+            sitemap_xml(pages, modified, videos, title), encoding="utf-8"
         )
         (out_dir / "robots.txt").write_text(
             f"User-agent: *\nAllow: /\n\nSitemap: {pages}sitemap.xml\n", encoding="utf-8"
@@ -2186,9 +2241,8 @@ def webpage_node(ctx):
         if size:
             image["width"], image["height"] = size
         node["primaryImageOfPage"] = image
-    # The page is regenerated from the README, so a release is what changes it.
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", ctx["date"] or ""):
-        node["dateModified"] = ctx["date"]
+    if ctx.get("modified"):
+        node["dateModified"] = ctx["modified"]
     return node
 
 
@@ -2334,8 +2388,10 @@ def sitemap_xml(pages: str, lastmod, videos=(), title: str = "") -> str:
         name = pick_language(video.get("name")) or f"{title} demo"
         description = pick_language(video.get("description")) or f"A demonstration of {title}."
         published = upload_datetime(video.get("uploadDate"))
+        # The watch pages are regenerated from the same sources as the product
+        # page, so they changed when it did and carry the same lastmod.
         lines = [
-            f"  <url>\n    <loc>{watch_url(pages, index)}</loc>",
+            f"  <url>\n    <loc>{watch_url(pages, index)}</loc>{stamp}",
             "    <video:video>",
             f"      <video:thumbnail_loc>https://i.ytimg.com/vi/{ident}/hqdefault.jpg</video:thumbnail_loc>",
             f"      <video:title>{html.escape(name)}</video:title>",
