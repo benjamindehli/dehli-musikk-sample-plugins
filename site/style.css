@@ -445,6 +445,49 @@ figure.shot-narrow img {
     margin: 0 0 1.25rem;
 }
 
+/* ── at a glance ──────────────────────────────────────────────────────────── */
+
+.specs {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0 1.25rem;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 0.35rem 1rem;
+}
+
+.specs dt {
+    grid-column: 1;
+    padding: 0.5rem 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    align-self: center;
+}
+
+.specs dd {
+    grid-column: 2;
+    margin: 0;
+    padding: 0.5rem 0;
+    font-weight: 500;
+}
+
+.specs dt + dd {
+    border-top: 1px solid var(--line);
+}
+
+.specs dt:first-of-type,
+.specs dt:first-of-type + dd {
+    border-top: 0;
+}
+
+.specs dt:not(:first-of-type) {
+    border-top: 1px solid var(--line);
+}
+
 table {
     border-collapse: collapse;
     width: 100%;

@@ -84,6 +84,7 @@ INTRO_SECTIONS = ("introduction", "description")
 RELEASE_SECTION = "release notes"
 ABOUT_SECTION = "about this repository"
 FORMATS_SECTION = "included formats"
+SPEC_SECTION = "technical specification"
 
 
 # ── small helpers ────────────────────────────────────────────────────────────
@@ -742,7 +743,7 @@ def join_words(words) -> str:
     return ", ".join(words[:-1]) + " and " + words[-1]
 
 
-def build_faq(title: str, description: str, entries, price, store_url: str, repo):
+def build_faq(title: str, description: str, entries, price, store_url: str, repo, spec=None):
     """The questions a buyer actually types, answered from what the README says.
 
     Every answer here is assembled from facts the repository already states: the
@@ -801,6 +802,19 @@ def build_faq(title: str, description: str, entries, price, store_url: str, repo
             "embedded, so there are no external files to install or locate. The Decent Sampler "
             "version is a sample library, and that one needs the free Decent Sampler "
             "application.",
+        ))
+
+    spec = spec or {}
+    if spec.get("sampleRate") and spec.get("bitDepth"):
+        faq.append((
+            f"What sample rate and bit depth is {title} recorded at?",
+            f"The samples are {spec['sampleRate']}, {spec['bitDepth']}.",
+        ))
+    if spec.get("samples") and spec.get("size"):
+        faq.append((
+            f"How many samples does {title} contain?",
+            f"{spec['samples']} sample files, {spec['size']} of audio. "
+            "Impulse responses for the effects are not counted in that figure.",
         ))
 
     if price:
@@ -873,6 +887,174 @@ def faq_node(faq, pages: str, title: str):
             for question, answer in faq
         ],
     }
+
+
+# ── technical specification ──────────────────────────────────────────────────
+
+SIZE_RE = re.compile(r"^([\d.]+)\s*(KB|MB|GB|TB)$", re.I)
+SIZE_UNITS = {"kb": 1e3, "mb": 1e6, "gb": 1e9, "tb": 1e12}
+# The rows a README labels as impulse responses are part of the effects, not of
+# the instrument's sampled sound, so they stay out of the sample totals.
+IR_LABEL_RE = re.compile(r"impulse response", re.I)
+
+
+def parse_size(text: str):
+    """Bytes for "241.3 MB". Decimal units, the way the file sizes were read off."""
+    match = SIZE_RE.match(strip_markdown(text))
+    return float(match.group(1)) * SIZE_UNITS[match.group(2).lower()] if match else None
+
+
+def format_size(size: float) -> str:
+    if size >= 1e9:
+        return f"{size / 1e9:.2f} GB"
+    if size >= 1e6:
+        return f"{size / 1e6:.1f} MB"
+    return f"{size / 1e3:.0f} KB"
+
+
+def spec_from_table(block):
+    """Twelve READMEs state the specification as a table, a row per sample group."""
+    header = [strip_markdown(cell).lower() for cell in block["header"]]
+
+    def column(name):
+        return next((n for n, cell in enumerate(header) if name in cell), None)
+
+    rate_col, depth_col = column("sample rate"), column("bit depth")
+    files_col, size_col = column("number of files"), column("file size")
+    if rate_col is None or size_col is None:
+        return None
+
+    rates, depths, files, total = [], [], 0, 0.0
+    for row in block["rows"]:
+        if not row or IR_LABEL_RE.search(strip_markdown(row[0])):
+            continue
+
+        def cell(index):
+            return strip_markdown(row[index]) if index is not None and index < len(row) else ""
+
+        for value, seen in ((cell(rate_col), rates), (cell(depth_col), depths)):
+            if value and value not in seen:
+                seen.append(value)
+        count = re.sub(r"\D", "", cell(files_col))
+        if count:
+            files += int(count)
+        size = parse_size(cell(size_col))
+        if size:
+            total += size
+
+    return build_spec(rates, depths, files, total)
+
+
+def spec_from_list(block):
+    """Omni-84 states the same facts as a bullet list rather than a table."""
+    fields = {}
+    for item in block["items"]:
+        raw = strip_markdown(item["text"])
+        if ":" in raw:
+            key, value = raw.split(":", 1)
+            fields[key.strip().lower()] = value.strip()
+    if "sample rate" not in fields:
+        return None
+    count = re.sub(r"\D", "", fields.get("number of samples", ""))
+    return build_spec(
+        [fields["sample rate"]],
+        [fields["bit depth"]] if fields.get("bit depth") else [],
+        int(count) if count else 0,
+        parse_size(fields.get("file size for samples", "")) or 0.0,
+    )
+
+
+def build_spec(rates, depths, files: int, total: float):
+    spec = {}
+    if rates:
+        spec["sampleRate"] = join_words(rates)
+    if depths:
+        spec["bitDepth"] = join_words(depths)
+    if files:
+        spec["samples"] = files
+    if total:
+        spec["size"] = format_size(total)
+    return spec or None
+
+
+def parse_spec(section):
+    """Sample rate, bit depth, sample count and total sample size.
+
+    The README already renders this as a table a reader can see. Reading it here
+    as well is what lets the same facts reach the page summary, the FAQ and the
+    structured data, instead of being locked inside a pipe table halfway down.
+    """
+    if not section:
+        return {}
+    for block in section["blocks"]:
+        found = None
+        if block["type"] == "table" and block.get("header"):
+            found = spec_from_table(block)
+        elif block["type"] == "list":
+            found = spec_from_list(block)
+        if found:
+            return found
+    return {}
+
+
+def build_glance(title: str, format_entries, systems, version, date, price, spec):
+    """The facts worth reading before the manual, as (term, definition) pairs.
+
+    The plugin formats and the Decent Sampler library get a row each whenever
+    they run on different platforms, which they do: flattening them into one
+    list of systems would say the plugin runs on Windows, and it does not.
+    """
+    rows = []
+    plugin = [e for e in format_entries if DECENT_SAMPLER_NAME not in e["name"].lower()]
+    sampler = next(
+        (e for e in format_entries if DECENT_SAMPLER_NAME in e["name"].lower()), None
+    )
+    plugin_systems = []
+    for entry in plugin:
+        for system in entry["systems"]:
+            if system not in plugin_systems:
+                plugin_systems.append(system)
+
+    if plugin and sampler and plugin_systems != sampler["systems"]:
+        rows.append((
+            "Plugin",
+            join_words([e["name"] for e in plugin])
+            + (f" for {join_words(plugin_systems)}" if plugin_systems else ""),
+        ))
+        rows.append(("Decent Sampler", join_words(sampler["systems"]) or "Yes"))
+    else:
+        names = [e["name"] for e in format_entries]
+        if names:
+            rows.append(("Formats", join_words(names)))
+        if systems:
+            rows.append(("Systems", join_words(systems)))
+    if version:
+        rows.append(("Version", f"{version} ({date})" if date else version))
+    if price:
+        rows.append(("Price", price_note(price).rstrip(".")))
+    if spec.get("sampleRate"):
+        rows.append(("Sample rate", spec["sampleRate"]))
+    if spec.get("bitDepth"):
+        rows.append(("Bit depth", spec["bitDepth"]))
+    if spec.get("samples"):
+        rows.append(("Samples", f"{spec['samples']:,} files".replace(",", " ")))
+    if spec.get("size"):
+        rows.append(("Sample content", spec["size"]))
+    return rows
+
+
+def render_glance(rows) -> str:
+    if not rows:
+        return ""
+    pairs = "".join(
+        f"<dt>{html.escape(term)}</dt><dd>{html.escape(definition)}</dd>"
+        for term, definition in rows
+    )
+    return (
+        '<section id="at-a-glance">'
+        '<h2><a class="anchor" href="#at-a-glance" aria-hidden="true">#</a>At a glance</h2>'
+        f'<dl class="specs">{pairs}</dl></section>'
+    )
 
 
 def split_releases(section, renderer: Renderer):
@@ -1524,6 +1706,9 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     version, date = latest_release(releases)
     version = version or meta.get("version")
     formats, systems, format_entries = format_details(find_section(sections, FORMATS_SECTION))
+    spec = parse_spec(find_section(sections, SPEC_SECTION))
+    if not spec:
+        warn(f"{plugin_dir.name}: no readable '{SPEC_SECTION}' — the summary will be thinner")
 
     # Release history goes after the manual, just before the repository notes.
     about = find_section(sections, ABOUT_SECTION)
@@ -1560,11 +1745,19 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
     # The FAQ sits after the manual and before the release history: the manual is
     # what a reader came for, and the questions are what someone arriving from a
     # search still wants answered once they have skimmed it.
-    faq = build_faq(title, description, format_entries, price, store_url, meta.get("repo"))
+    faq = build_faq(title, description, format_entries, price, store_url, meta.get("repo"), spec)
     faq_html = render_faq(faq)
     faq_anchor = releases or about
 
-    body = [video_html] if video_html else []
+    # The summary leads the page: a reader deciding whether this instrument fits
+    # wants the formats, the price and the sample format before the manual, and
+    # so does anything reading the page to answer a question about it.
+    glance = build_glance(title, format_entries, systems, version, date, price, spec)
+    glance_html = render_glance(glance)
+
+    body = [glance_html] if glance_html else []
+    if video_html:
+        body.append(video_html)
     for section in sections:
         if section is faq_anchor and faq_html:
             body.append(faq_html)
@@ -1582,7 +1775,9 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         body.append(faq_html)
 
     faq_link = '<li><a href="#faq">Frequently asked questions</a></li>' if faq_html else ""
-    toc = ['<li><a href="#demo-video">Video</a></li>'] if video_html else []
+    toc = ['<li><a href="#at-a-glance">At a glance</a></li>'] if glance_html else []
+    if video_html:
+        toc.append('<li><a href="#demo-video">Video</a></li>')
     for section in sections:
         if section is faq_anchor and faq_link:
             toc.append(faq_link)
@@ -1641,6 +1836,8 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             version=version, date=date, systems=systems, hero=hero, images=images,
             repo=meta.get("repo"), price=price, ids=ids, tagline=tagline,
             same_as=meta.get("sameAs") or [], video=meta.get("video"), faq=faq,
+            spec=spec, format_entries=format_entries,
+            release_slug=releases["slug"] if releases else None,
         ),
     )
     (out_dir / "index.html").write_text(html_text, encoding="utf-8")
@@ -1817,6 +2014,29 @@ def website_node(ctx):
     return node
 
 
+def software_requirements(entries) -> str:
+    """What a buyer needs besides the operating system, from the formats list.
+
+    operatingSystem already carries the platforms, so this is the other half:
+    a host for the plugin formats, the Decent Sampler application for the
+    library, and nothing at all for the standalone build.
+    """
+    names = [e["name"] for e in entries]
+    hosted = [n for n in names if n in ("VST3", "AU", "AAX", "CLAP", "VST")]
+    # Alternatives, not prerequisites: one format or the other, never both.
+    parts = []
+    if hosted:
+        parts.append(f"a host that loads {' or '.join(hosted)} for the plugin version")
+    if any(DECENT_SAMPLER_NAME in n.lower() for n in names):
+        parts.append("the free Decent Sampler application for the sample library version")
+    if not parts:
+        return ""
+    sentence = "Requires " + ", or ".join(parts) + "."
+    if any("standalone" in n.lower() for n in names):
+        sentence += " The standalone application needs neither."
+    return sentence
+
+
 def structured_data(**ctx) -> str:
     """schema.org SoftwareApplication — the rich-result payload for the page."""
     if not ctx["pages"]:
@@ -1825,7 +2045,9 @@ def structured_data(**ctx) -> str:
     # The instrument is identified by its entry on dehlimusikk.no, so this page,
     # that site and the store all describe one and the same entity.
     entity = {
-        "@type": "SoftwareApplication",
+        # Also a Product, so the offer below is read by the shopping surfaces as
+        # well as the software ones. It is both, and saying so costs nothing.
+        "@type": ["SoftwareApplication", "Product"],
         "@id": ctx["ids"]["product"],
         "name": ctx["title"],
         "description": ctx["description"],
@@ -1841,6 +2063,16 @@ def structured_data(**ctx) -> str:
         entity["operatingSystem"] = ", ".join(ctx["systems"])
     if ctx["version"]:
         entity["softwareVersion"] = ctx["version"]
+    requirements = software_requirements(ctx.get("format_entries") or [])
+    if requirements:
+        entity["softwareRequirements"] = requirements
+    # The space the audio takes, which is the figure a buyer needs. Not fileSize:
+    # that means the size of the package itself, and the samples ship losslessly
+    # compressed, so the download is smaller than the audio it unpacks to.
+    if (ctx.get("spec") or {}).get("size"):
+        entity["storageRequirements"] = ctx["spec"]["size"]
+    if ctx.get("release_slug"):
+        entity["releaseNotes"] = pages + "#" + ctx["release_slug"]
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", ctx["date"] or ""):
         entity["datePublished"] = ctx["date"]
     if ctx["hero"]:
