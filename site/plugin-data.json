@@ -112,6 +112,80 @@
             },
             "uploadDate": "2024-08-08",
             "duration": "PT3M33S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Soft FM Piano Pad",
+                        "en": "Soft FM Piano Pad"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 32
+                },
+                {
+                    "name": {
+                        "no": "Soft FM Piano Pad 2",
+                        "en": "Soft FM Piano Pad 2"
+                    },
+                    "startOffset": 32,
+                    "endOffset": 58
+                },
+                {
+                    "name": {
+                        "no": "Koto",
+                        "en": "Koto"
+                    },
+                    "startOffset": 58,
+                    "endOffset": 73
+                },
+                {
+                    "name": {
+                        "no": "Internal Speaker",
+                        "en": "Internal Speaker"
+                    },
+                    "startOffset": 73,
+                    "endOffset": 95
+                },
+                {
+                    "name": {
+                        "no": "Cosmic",
+                        "en": "Cosmic"
+                    },
+                    "startOffset": 95,
+                    "endOffset": 113
+                },
+                {
+                    "name": {
+                        "no": "Digi Piano",
+                        "en": "Digi Piano"
+                    },
+                    "startOffset": 113,
+                    "endOffset": 138
+                },
+                {
+                    "name": {
+                        "no": "Mallets Pad",
+                        "en": "Mallets Pad"
+                    },
+                    "startOffset": 138,
+                    "endOffset": 167
+                },
+                {
+                    "name": {
+                        "no": "LA Sunrise",
+                        "en": "LA Sunrise"
+                    },
+                    "startOffset": 167,
+                    "endOffset": 195
+                },
+                {
+                    "name": {
+                        "no": "LA Sunset ",
+                        "en": "LA Sunset "
+                    },
+                    "startOffset": 195,
+                    "endOffset": 213
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=hZNESXfthg0"
         }
     },
@@ -151,6 +225,32 @@
             },
             "uploadDate": "2024-03-31",
             "duration": "PT4M26S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Mono-lydfiler med dynamics (anslagsfølsomhet)",
+                        "en": "Mono samples with dynamics (velocity)"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 85
+                },
+                {
+                    "name": {
+                        "no": "Mono-lydfiler uten dynamics (anslagsfølsomhet)",
+                        "en": "Mono samples without dynamics (velocity)"
+                    },
+                    "startOffset": 85,
+                    "endOffset": 176
+                },
+                {
+                    "name": {
+                        "no": "Stereo samples without dynamics (anslagsfølsomhet)",
+                        "en": "Stereo samples without dynamics (velocity)"
+                    },
+                    "startOffset": 176,
+                    "endOffset": 266
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=yTpCq-qIIdY"
         }
     },
@@ -189,6 +289,32 @@
             },
             "uploadDate": "2024-03-17",
             "duration": "PT2M27S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Layered",
+                        "en": "Layered"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 33
+                },
+                {
+                    "name": {
+                        "no": "Split",
+                        "en": "Split"
+                    },
+                    "startOffset": 33,
+                    "endOffset": 57
+                },
+                {
+                    "name": {
+                        "no": "Pitch stretched",
+                        "en": "Pitch stretched"
+                    },
+                    "startOffset": 57,
+                    "endOffset": 150
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=igZ9TCwIJpw"
         }
     },
@@ -227,6 +353,104 @@
             },
             "uploadDate": "2024-02-11",
             "duration": "PT2M34S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Lukkede kammer med lav lufttilførsel",
+                        "en": "Closed chambers with low air supply"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 14
+                },
+                {
+                    "name": {
+                        "no": "Lukkede kammer med høy lufttilførsel",
+                        "en": "Closed chambers with high air supply"
+                    },
+                    "startOffset": 14,
+                    "endOffset": 28
+                },
+                {
+                    "name": {
+                        "no": "Bratsj lydtunger",
+                        "en": "Viola reeds"
+                    },
+                    "startOffset": 28,
+                    "endOffset": 41
+                },
+                {
+                    "name": {
+                        "no": "Diapason lydtunger",
+                        "en": "Diapason reeds"
+                    },
+                    "startOffset": 41,
+                    "endOffset": 54
+                },
+                {
+                    "name": {
+                        "no": "Begge kammer lukket",
+                        "en": "Both chambers closed"
+                    },
+                    "startOffset": 54,
+                    "endOffset": 61
+                },
+                {
+                    "name": {
+                        "no": "Gradvis åpning av kammerene",
+                        "en": "Gradually opening up the swell chambers"
+                    },
+                    "startOffset": 61,
+                    "endOffset": 68
+                },
+                {
+                    "name": {
+                        "no": "Begge kammer åpne",
+                        "en": "Both chambers open"
+                    },
+                    "startOffset": 68,
+                    "endOffset": 79
+                },
+                {
+                    "name": {
+                        "no": "Med trommer og synth bass",
+                        "en": "With drums and synth bass"
+                    },
+                    "startOffset": 79,
+                    "endOffset": 87
+                },
+                {
+                    "name": {
+                        "no": "Kirkeklang",
+                        "en": "Church reverb"
+                    },
+                    "startOffset": 87,
+                    "endOffset": 94
+                },
+                {
+                    "name": {
+                        "no": "Mekanisk støy",
+                        "en": "Mechanical noise"
+                    },
+                    "startOffset": 94,
+                    "endOffset": 120
+                },
+                {
+                    "name": {
+                        "no": "Tremulant",
+                        "en": "Tremulant"
+                    },
+                    "startOffset": 120,
+                    "endOffset": 140
+                },
+                {
+                    "name": {
+                        "no": "Produktbilde",
+                        "en": "Product image"
+                    },
+                    "startOffset": 140,
+                    "endOffset": 154
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=MWzlTejTHSw"
         }
     },
@@ -266,6 +490,152 @@
             },
             "uploadDate": "2024-01-07",
             "duration": "PT10M2S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Stylophone 1",
+                        "en": "Stylophone 1"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 5
+                },
+                {
+                    "name": {
+                        "no": "Stylophone 1 Vibrato",
+                        "en": "Stylophone 1 Vibrato"
+                    },
+                    "startOffset": 5,
+                    "endOffset": 9
+                },
+                {
+                    "name": {
+                        "no": "Stylophone 2",
+                        "en": "Stylophone 2"
+                    },
+                    "startOffset": 9,
+                    "endOffset": 12
+                },
+                {
+                    "name": {
+                        "no": "Stylophone 2 Vibrato",
+                        "en": "Stylophone 2 Vibrato"
+                    },
+                    "startOffset": 12,
+                    "endOffset": 16
+                },
+                {
+                    "name": {
+                        "no": "Stylophone 3",
+                        "en": "Stylophone 3"
+                    },
+                    "startOffset": 16,
+                    "endOffset": 20
+                },
+                {
+                    "name": {
+                        "no": "Stylophone 3 Vibrato",
+                        "en": "Stylophone 3 Vibrato"
+                    },
+                    "startOffset": 20,
+                    "endOffset": 24
+                },
+                {
+                    "name": {
+                        "no": "Default",
+                        "en": "Default"
+                    },
+                    "startOffset": 24,
+                    "endOffset": 62
+                },
+                {
+                    "name": {
+                        "no": "Dirty StolyPoly",
+                        "en": "Dirty StolyPoly"
+                    },
+                    "startOffset": 62,
+                    "endOffset": 121
+                },
+                {
+                    "name": {
+                        "no": "Piano",
+                        "en": "Piano"
+                    },
+                    "startOffset": 121,
+                    "endOffset": 145
+                },
+                {
+                    "name": {
+                        "no": "Harp",
+                        "en": "Harp"
+                    },
+                    "startOffset": 145,
+                    "endOffset": 192
+                },
+                {
+                    "name": {
+                        "no": "Harpsichord",
+                        "en": "Harpsichord"
+                    },
+                    "startOffset": 192,
+                    "endOffset": 220
+                },
+                {
+                    "name": {
+                        "no": "Clavinet",
+                        "en": "Clavinet"
+                    },
+                    "startOffset": 220,
+                    "endOffset": 260
+                },
+                {
+                    "name": {
+                        "no": "Pad",
+                        "en": "Pad"
+                    },
+                    "startOffset": 260,
+                    "endOffset": 358
+                },
+                {
+                    "name": {
+                        "no": "Strings",
+                        "en": "Strings"
+                    },
+                    "startOffset": 358,
+                    "endOffset": 442
+                },
+                {
+                    "name": {
+                        "no": "Combo Organ",
+                        "en": "Combo Organ"
+                    },
+                    "startOffset": 442,
+                    "endOffset": 504
+                },
+                {
+                    "name": {
+                        "no": "Flutes",
+                        "en": "Flutes"
+                    },
+                    "startOffset": 504,
+                    "endOffset": 523
+                },
+                {
+                    "name": {
+                        "no": "Bright",
+                        "en": "Bright"
+                    },
+                    "startOffset": 523,
+                    "endOffset": 553
+                },
+                {
+                    "name": {
+                        "no": "Space Oboe",
+                        "en": "Space Oboe"
+                    },
+                    "startOffset": 553,
+                    "endOffset": 602
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=H_-g8gjE0EM"
         }
     },
@@ -343,6 +713,24 @@
             },
             "uploadDate": "2023-08-19",
             "duration": "PT57S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "John Williams - Hedwig's Theme (Harry Potter)",
+                        "en": "John Williams - Hedwig's Theme (Harry Potter)"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 20
+                },
+                {
+                    "name": {
+                        "no": "Pyotr Ilyich Tchaikovsky - Dance of the Sugar Plum Fairy (The Nutcracker)",
+                        "en": "Pyotr Ilyich Tchaikovsky - Dance of the Sugar Plum Fairy (The Nutcracker)"
+                    },
+                    "startOffset": 20,
+                    "endOffset": 57
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=8g-XCw91hSc"
         }
     },
@@ -420,6 +808,72 @@
             },
             "uploadDate": "2023-06-26",
             "duration": "PT2M32S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Bells and pad",
+                        "en": "Bells and pad"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 19
+                },
+                {
+                    "name": {
+                        "no": "Arpeggio synth",
+                        "en": "Arpeggio synth"
+                    },
+                    "startOffset": 19,
+                    "endOffset": 37
+                },
+                {
+                    "name": {
+                        "no": "Drums",
+                        "en": "Drums"
+                    },
+                    "startOffset": 37,
+                    "endOffset": 55
+                },
+                {
+                    "name": {
+                        "no": "Bass",
+                        "en": "Bass"
+                    },
+                    "startOffset": 55,
+                    "endOffset": 72
+                },
+                {
+                    "name": {
+                        "no": "Celesta",
+                        "en": "Celesta"
+                    },
+                    "startOffset": 72,
+                    "endOffset": 90
+                },
+                {
+                    "name": {
+                        "no": "Pad",
+                        "en": "Pad"
+                    },
+                    "startOffset": 90,
+                    "endOffset": 106
+                },
+                {
+                    "name": {
+                        "no": "Mix",
+                        "en": "Mix"
+                    },
+                    "startOffset": 106,
+                    "endOffset": 125
+                },
+                {
+                    "name": {
+                        "no": "Single drawbar",
+                        "en": "Single drawbar"
+                    },
+                    "startOffset": 125,
+                    "endOffset": 152
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=0h4CQ6jh6yM"
         }
     },
@@ -498,6 +952,88 @@
             },
             "uploadDate": "2020-05-25",
             "duration": "PT3M44S",
+            "clips": [
+                {
+                    "name": {
+                        "no": "Intro",
+                        "en": "Intro"
+                    },
+                    "startOffset": 0,
+                    "endOffset": 40
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 1: Televerket Elektrisk Bureau (Telefon mik)",
+                        "en": "Example 1: Televerket Elektrisk Bureau (Telephone mic)"
+                    },
+                    "startOffset": 40,
+                    "endOffset": 67
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 1: JTS CX-516 (Gooseneck mik)",
+                        "en": "Example 1: JTS CX-516 (Gooseneck mic inside)"
+                    },
+                    "startOffset": 67,
+                    "endOffset": 95
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 1: AKG C451E (Stereo par)",
+                        "en": "Example 1: AKG C451E (Stereo pair)"
+                    },
+                    "startOffset": 95,
+                    "endOffset": 124
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 2: Televerket Elektrisk Bureau (Telefon mik)",
+                        "en": "Example 2: Televerket Elektrisk Bureau (Telephone mic)"
+                    },
+                    "startOffset": 124,
+                    "endOffset": 140
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 2: JTS CX-516 (Gooseneck mik)",
+                        "en": "Example 2: JTS CX-516 (Gooseneck mic inside)"
+                    },
+                    "startOffset": 140,
+                    "endOffset": 156
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 2: AKG C451E (Stereo par)",
+                        "en": "Example 2: AKG C451E (Stereo pair)"
+                    },
+                    "startOffset": 156,
+                    "endOffset": 173
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 3: Televerket Elektrisk Bureau (Telefon mik)",
+                        "en": "Example 3: Televerket Elektrisk Bureau (Telephone mic)"
+                    },
+                    "startOffset": 173,
+                    "endOffset": 189
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 3: JTS CX-516 (Gooseneck mik)",
+                        "en": "Example 3: JTS CX-516 (Gooseneck mic inside)"
+                    },
+                    "startOffset": 189,
+                    "endOffset": 205
+                },
+                {
+                    "name": {
+                        "no": "Eksempel 3: AKG C451E (Stereo par)",
+                        "en": "Example 3: AKG C451E (Stereo pair)"
+                    },
+                    "startOffset": 205,
+                    "endOffset": 224
+                }
+            ],
             "contentUrl": "https://www.youtube.com/watch?v=2k1QpuwCZzk"
         }
     }

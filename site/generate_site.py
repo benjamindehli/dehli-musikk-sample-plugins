@@ -1261,6 +1261,54 @@ def video_duration(video, label: str):
     return raw, seconds
 
 
+_CLIP_WARNED = set()
+
+
+def video_clips(video, total_seconds, label: str):
+    """The video's chapters as [(name, start, end)], in order and validated.
+
+    A clip that runs past the end of the video is rejected outright by Google,
+    so an end offset beyond the duration is pulled back to it and reported: the
+    chapter is still true, only its stated end was wrong.
+    """
+    clips = []
+    for clip in video.get("clips") or []:
+        name = pick_language(clip.get("name"))
+        start = clip.get("startOffset")
+        if not name or not isinstance(start, int) or start < 0:
+            continue
+        end = clip.get("endOffset")
+        if isinstance(end, int) and total_seconds and end > total_seconds:
+            # Asked for by the watch page and by the markdown twin, so said once.
+            complaint = f"{label}: chapter {name!r} ends at {end}s but the video is {total_seconds}s long"
+            if complaint not in _CLIP_WARNED:
+                _CLIP_WARNED.add(complaint)
+                warn(complaint)
+            end = total_seconds
+        if isinstance(end, int) and end <= start:
+            continue
+        clips.append((name, start, end))
+    clips.sort(key=lambda clip: clip[1])
+    # One chapter is not a chapter list, it is the video.
+    return clips if len(clips) > 1 else []
+
+
+def clip_nodes(clips, url: str):
+    """schema.org Clip parts, each addressing the start time on this page."""
+    parts = []
+    for name, start, end in clips:
+        node = {
+            "@type": "Clip",
+            "name": name,
+            "startOffset": start,
+            "url": f"{url}?t={start}",
+        }
+        if end:
+            node["endOffset"] = end
+        parts.append(node)
+    return parts
+
+
 def youtube_id(url: str):
     match = YOUTUBE_ID_RE.search(url or "")
     return match.group(1) if match else None
@@ -1632,12 +1680,20 @@ def markdown_twin(ctx, readme_text: str) -> str:
     links.append(("Get it", ctx["store_url"]))
     if ctx.get("repo"):
         links.append(("Source on GitHub", ctx["repo"]))
+    chapters = []
     for index, video in enumerate(ctx.get("videos") or []):
         name = pick_language(video.get("name")) or f"{ctx['title']} demo"
-        links.append((name, watch_url(pages, index)))
+        url = watch_url(pages, index)
+        links.append((name, url))
+        _, seconds = video_duration(video, f"{ctx['title']} video")
+        for clip_name, start, _end in video_clips(video, seconds, f"{ctx['title']} video"):
+            chapters.append(f"- [{format_duration(start)} {clip_name}]({url}?t={start})")
     out += ["## Links", ""]
     out += [f"- [{name}]({url})" for name, url in links]
     out.append("")
+
+    if chapters:
+        out += ["## Video chapters", ""] + chapters + [""]
 
     if ctx["faq"]:
         out += ["## Frequently asked questions", ""]
@@ -1774,9 +1830,12 @@ def build_watch_page(video, index: int, ctx) -> None:
         video_node["uploadDate"] = uploaded
     else:
         warn(f"{ctx['title']}: video has no usable uploadDate, and Google requires it")
-    iso, _ = video_duration(video, f"{ctx['title']} video")
+    iso, seconds = video_duration(video, f"{ctx['title']} video")
     if iso:
         video_node["duration"] = iso
+    clips = video_clips(video, seconds, f"{ctx['title']} video")
+    if clips:
+        video_node["hasPart"] = clip_nodes(clips, url)
 
     graph = [
         {
@@ -1801,6 +1860,51 @@ def build_watch_page(video, index: int, ctx) -> None:
 
     icon_tag = f'<img src="{up}img/icon.png" alt="">' if ctx["icon"] else ""
     favicon = f'<link rel="icon" href="{up}img/icon.png">' if ctx["icon"] else ""
+
+    # Real links, because that is what the Clip markup points at and what has to
+    # work with scripting off. The click handler below only saves a reload.
+    chapter_list = ""
+    if clips:
+        rows = "".join(
+            f'<li><a href="?t={start}" data-start="{start}">'
+            f'<span class="at">{format_duration(start)}</span>'
+            f'<span class="what">{esc(clip_name)}</span></a></li>'
+            for clip_name, start, _end in clips
+        )
+        chapter_list = (
+            '  <section class="chapters" aria-labelledby="chapters-title">'
+            '<h2 id="chapters-title">Chapters</h2>'
+            f"<ol>{rows}</ol></section>"
+        )
+
+    # The Clip markup promises that ?t=<seconds> starts the video there, so the
+    # page has to keep that promise. The iframe is left plain in the markup for
+    # the crawler and only rewritten once a start time is actually asked for.
+    chapter_script = ""
+    if clips:
+        chapter_script = """<script>
+(function () {
+  var frame = document.querySelector('.watch iframe');
+  if (!frame) return;
+  var base = frame.src;
+
+  function play(seconds, autoplay) {
+    frame.src = base + '?start=' + seconds + (autoplay ? '&autoplay=1' : '');
+  }
+
+  var asked = new URLSearchParams(location.search).get('t');
+  if (asked !== null && /^\\d+$/.test(asked)) play(asked, false);
+
+  document.querySelectorAll('.chapters a[data-start]').forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+      play(link.dataset.start, true);
+      history.replaceState(null, '', link.getAttribute('href'));
+      frame.scrollIntoView({ block: 'nearest' });
+    });
+  });
+}());
+</script>"""
 
     page = f"""<!doctype html>
 <html lang="en">
@@ -1852,6 +1956,7 @@ def build_watch_page(video, index: int, ctx) -> None:
   </div>
   <p class="lead">{esc(description)}</p>
   <div class="badges">{"".join(badges)}</div>
+{chapter_list}
   <p>{esc(ctx["tagline"])}</p>
   <div class="cta">
     <a class="btn btn-primary" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">{esc(ctx["cta_label"])}</a>
@@ -1868,6 +1973,7 @@ def build_watch_page(video, index: int, ctx) -> None:
   </nav>
   <p>{esc(name)} is a demonstration of {esc(ctx["title"])}, a sample instrument by {BRAND}.</p>
 </footer>
+{chapter_script}
 
 </body>
 </html>

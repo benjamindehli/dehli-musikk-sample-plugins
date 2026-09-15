@@ -811,3 +811,51 @@ footer img {
     color: var(--muted);
     font-variant-numeric: tabular-nums;
 }
+
+/* ── watch page chapters ──────────────────────────────────────────────────── */
+
+.chapters {
+    margin: 1.5rem 0;
+}
+
+.chapters h2 {
+    margin: 0 0 0.5rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border: 0;
+    padding: 0;
+}
+
+.chapters ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.chapters li + li {
+    border-top: 1px solid var(--line);
+}
+
+.chapters a {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.chapters a:hover {
+    background: var(--surface-2);
+}
+
+.chapters .at {
+    flex: none;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
