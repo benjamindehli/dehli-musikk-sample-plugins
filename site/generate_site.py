@@ -857,6 +857,32 @@ def build_faq(title: str, description: str, entries, price, store_url: str, repo
     return faq
 
 
+URL_RE = re.compile(r"https?://[^\s<>\"]+")
+
+
+def answer_html(text: str) -> str:
+    """Escape an answer and turn any bare URL in it into a link.
+
+    Google allows <a> inside an FAQ answer, so this one string can be both the
+    paragraph on the page and the acceptedAnswer.text beside it, which is what
+    keeps the two identical. Trailing sentence punctuation stays outside the
+    href: the full stop after a store URL ends the sentence, not the address.
+    """
+    out, last = [], 0
+    for match in URL_RE.finditer(text):
+        url = match.group(0).rstrip(".,;:!?")
+        while url.endswith(")") and url.count("(") < url.count(")"):
+            url = url[:-1]
+        out.append(html.escape(text[last:match.start()], quote=False))
+        out.append(
+            f'<a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener">'
+            f"{html.escape(url, quote=False)}</a>"
+        )
+        last = match.start() + len(url)
+    out.append(html.escape(text[last:], quote=False))
+    return "".join(out)
+
+
 def render_faq(faq) -> str:
     """Rendered so the visible answer and the Answer.text in the graph match word
     for word, which is what the structured data is required to claim."""
@@ -864,7 +890,7 @@ def render_faq(faq) -> str:
         return ""
     items = "".join(
         f'<details class="faq-item"><summary>{html.escape(question)}</summary>'
-        f'<div class="body"><p>{html.escape(answer)}</p></div></details>'
+        f'<div class="body"><p>{answer_html(answer)}</p></div></details>'
         for question, answer in faq
     )
     return (
@@ -887,7 +913,9 @@ def faq_node(faq, pages: str, title: str):
             {
                 "@type": "Question",
                 "name": question,
-                "acceptedAnswer": {"@type": "Answer", "text": answer},
+                # The same string the page shows, links and all, so the two
+                # cannot drift apart. answer_html must stay deterministic.
+                "acceptedAnswer": {"@type": "Answer", "text": answer_html(answer)},
             }
             for question, answer in faq
         ],
