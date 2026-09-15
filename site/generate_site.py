@@ -1446,6 +1446,25 @@ def pick_hero(plugin_dir: Path, meta):
     return f"/Screenshots/{best.name}" if best else None
 
 
+def hero_alt(meta, readme_text: str, hero_src, title: str) -> str:
+    """Alt text for the lead screenshot, in the README's own words.
+
+    The same sentence used to be asserted about all thirteen heroes: that the
+    shot showed the controls and the on-screen keyboard. The hero is whichever
+    screenshot is largest, or whatever heroImage names, and for EDB-Orgel that
+    is a tab with neither. The README already names every screenshot it embeds,
+    so the honest description is the one written next to that very image.
+    """
+    if meta.get("heroAlt"):
+        return meta["heroAlt"]
+    if hero_src:
+        for alt, src in IMG_RE.findall(readme_text):
+            if src.strip() == hero_src.strip() and alt.strip():
+                alt = alt.strip()
+                return alt if title.lower() in alt.lower() else f"{title} {alt}"
+    return f"The {title} plugin interface"
+
+
 def read_title(plugin_dir: Path) -> str:
     for line in (plugin_dir / "README.md").read_text(encoding="utf-8").split("\n"):
         heading = HEADING_RE.match(line)
@@ -1806,6 +1825,8 @@ def build_watch_page(video, index: int, ctx) -> None:
 <meta name="twitter:card" content="player">
 <meta name="twitter:title" content="{esc(name)}">
 <meta name="twitter:description" content="{esc(summarize(description))}">
+<meta name="twitter:image" content="https://i.ytimg.com/vi/{ident}/hqdefault.jpg">
+<meta name="twitter:image:alt" content="{esc(name)}">
 {favicon}
 <style>
 {stylesheet()}
@@ -1982,7 +2003,8 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
 
     data = data or {}
     meta = read_meta(plugin_dir)
-    blocks, refs = parse_markdown(readme.read_text(encoding="utf-8"))
+    readme_text = readme.read_text(encoding="utf-8")
+    blocks, refs = parse_markdown(readme_text)
     title, intro, sections = organize(blocks)
     title = title or meta["product"]
 
@@ -2129,12 +2151,12 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         intro_rest=renderer.blocks(rest),
         description=description,
         page_title=seo_title(title, formats),
-        keywords=seo_keywords(title, formats),
         version=version,
         date=date,
         formats=formats,
         systems=systems,
         hero=hero,
+        hero_alt=hero_alt(meta, readme_text, hero_src, title),
         icon=icon,
         repo=meta.get("repo"),
         owner=meta.get("owner"),
@@ -2175,7 +2197,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
                     "product_page": product_page, "repo": meta.get("repo"),
                     "videos": videos, "images": images,
                 },
-                readme.read_text(encoding="utf-8"),
+                readme_text,
             ),
             encoding="utf-8",
         )
@@ -2232,16 +2254,6 @@ def seo_description(title: str, tagline: str) -> str:
         text = f"{title}: {text}"
     return summarize(text or f"{title}, a sample instrument by {BRAND}.")
 
-
-def seo_keywords(title: str, formats) -> str:
-    words = [title, "sample library", "sample instrument", "virtual instrument"]
-    words += [f.replace(" application", "") for f in formats]
-    words += ["Decent Sampler", BRAND]
-    seen = []
-    for word in words:
-        if word and word.lower() not in [s.lower() for s in seen]:
-            seen.append(word)
-    return ", ".join(seen)
 
 
 def product_pages(meta):
@@ -2548,10 +2560,9 @@ def page_html(**ctx) -> str:
     if ctx["hero"]:
         size = ctx["hero"]["size"] or (0, 0)
         dims = f' width="{size[0]}" height="{size[1]}"' if size[0] else ""
-        alt = f'{ctx["title"]} plugin interface, showing its controls and on-screen keyboard'
         hero_shot = (
             f'<div class="hero-shot"><img src="{ctx["hero"]["url"]}" '
-            f'alt="{esc(alt)}" fetchpriority="high" decoding="async"{dims}></div>'
+            f'alt="{esc(ctx["hero_alt"])}" fetchpriority="high" decoding="async"{dims}></div>'
         )
         # The hero image is the LCP element; start it before the CSS resolves.
         preload = f'<link rel="preload" as="image" href="{ctx["hero"]["url"]}" fetchpriority="high">'
@@ -2568,18 +2579,35 @@ def page_html(**ctx) -> str:
         else ""
     )
     og_url = f'<meta property="og:url" content="{esc(ctx["pages"])}">' if ctx.get("pages") else ""
-    og_image = ""
+    og_image = twitter_image = ""
     if ctx.get("pages") and ctx["hero"]:
         size = ctx["hero"]["size"] or (0, 0)
+        image_url = ctx["pages"] + ctx["hero"]["url"]
         og_image = (
-            f'<meta property="og:image" content="{esc(ctx["pages"] + ctx["hero"]["url"])}">\n'
-            f'<meta property="og:image:alt" content="{esc(ctx["title"])} plugin interface">'
+            f'<meta property="og:image" content="{esc(image_url)}">\n'
+            f'<meta property="og:image:alt" content="{esc(ctx["hero_alt"])}">'
         )
         if size[0]:
             og_image += (
                 f'\n<meta property="og:image:width" content="{size[0]}">'
                 f'\n<meta property="og:image:height" content="{size[1]}">'
             )
+        # Twitter falls back to og:image, but only some readers of these tags do.
+        twitter_image = (
+            f'<meta name="twitter:image" content="{esc(image_url)}">\n'
+            f'<meta name="twitter:image:alt" content="{esc(ctx["hero_alt"])}">'
+        )
+
+    # og:type is product, so the price belongs in the card as well as in the
+    # structured data. Pay what you want has no OG equivalent, so this is the
+    # minimum, which is what offers.price says too.
+    og_product = ""
+    if ctx.get("price"):
+        og_product = (
+            f'<meta property="product:price:amount" content="{esc(ctx["price"]["minimum"])}">\n'
+            f'<meta property="product:price:currency" content="{esc(ctx["price"]["currency"])}">\n'
+            '<meta property="og:availability" content="instock">'
+        )
     json_ld = (
         f'<script type="application/ld+json">\n{ctx["json_ld"]}\n</script>' if ctx.get("json_ld") else ""
     )
@@ -2650,7 +2678,6 @@ def page_html(**ctx) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(ctx["page_title"])}</title>
 <meta name="description" content="{esc(ctx["description"])}">
-<meta name="keywords" content="{esc(ctx["keywords"])}">
 <meta name="author" content="{BRAND}">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="theme-color" content="#a35a2a" media="(prefers-color-scheme: light)">
@@ -2664,10 +2691,12 @@ def page_html(**ctx) -> str:
 <meta property="og:description" content="{esc(ctx["description"])}">
 {og_url}
 {og_image}
+{og_product}
 {og_video}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{esc(ctx["page_title"])}">
 <meta name="twitter:description" content="{esc(ctx["description"])}">
+{twitter_image}
 {favicon}
 {preload}
 <style>
