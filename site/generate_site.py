@@ -1098,8 +1098,8 @@ def section_subheadings(section):
 # ── plugin metadata ──────────────────────────────────────────────────────────
 
 def match_key(text: str) -> str:
-    """Normalize a product name so "MaskinTrommer", "Maskintrommer" and the
-    directory "maskintrommer-plugin" all resolve to the same entry."""
+    """Normalize a product name so "MaskinTrommer", the Pages repository name
+    and the directory "maskintrommer-plugin" all resolve to the same entry."""
     return re.sub(r"[^a-z0-9]+", "", text.lower().replace("-plugin", ""))
 
 

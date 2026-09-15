@@ -12,7 +12,7 @@ Every instrument has its own product page with the full manual. The store is htt
 - [EDB-Orgel](https://benjamindehli.github.io/EDB-Orgel/): Four digital synthesis types with the workflow of a drawbar organ crossed with an analog synth. For VST3, AU and Decent Sampler.
 - [Elektrisk Salmesykkel](https://benjamindehli.github.io/ElektriskSalmesykkel/): A Yamaha L-20D electric harmonium with tremulant, noise and reverb, and an air supply that sags as more notes are held.
 - [Lo-fi Tape Piano](https://benjamindehli.github.io/lo-fi-tape-piano/): A Louis Zwicki Pianette recorded to cassette through three microphones, with tape compression, wow and flutter. VST3, AU, Decent Sampler.
-- [Maskintrommer](https://benjamindehli.github.io/MaskinTrommer/): Electronic drums from a Korg MS-20, Roland SH-09, Doepfer Dark Energy and Sequential Pro-One, with many samples per sound.
+- [MaskinTrommer](https://benjamindehli.github.io/MaskinTrommer/): Electronic drums from a Korg MS-20, Roland SH-09, Doepfer Dark Energy and Sequential Pro-One, with many samples per sound.
 - [Midnight Wurli](https://benjamindehli.github.io/MidnightWurli/): A Wurlitzer 200A played softly, sampled from the line out and a contact microphone that captures key clicks and pedal noise.
 - [Omni-84](https://benjamindehli.github.io/Omni-84/): The Suzuki Omnichord OM-84 sampled in full, from drums and bass to chords, keyboard and AutoStrum SonicStrings. Free for VST3 and AU.
 - [Strykebrett](https://benjamindehli.github.io/Strykebrett/): A sampled Logan String Melody II string synthesiser with ensemble, phaser, echo and reverb. For VST3, AU and Decent Sampler.
@@ -28,7 +28,7 @@ Every instrument has its own product page with the full manual. The store is htt
 - [EDB-Orgel](https://benjamindehli.github.io/EDB-Orgel/llms.txt)
 - [Elektrisk Salmesykkel](https://benjamindehli.github.io/ElektriskSalmesykkel/llms.txt)
 - [Lo-fi Tape Piano](https://benjamindehli.github.io/lo-fi-tape-piano/llms.txt)
-- [Maskintrommer](https://benjamindehli.github.io/MaskinTrommer/llms.txt)
+- [MaskinTrommer](https://benjamindehli.github.io/MaskinTrommer/llms.txt)
 - [Midnight Wurli](https://benjamindehli.github.io/MidnightWurli/llms.txt)
 - [Omni-84](https://benjamindehli.github.io/Omni-84/llms.txt)
 - [Strykebrett](https://benjamindehli.github.io/Strykebrett/llms.txt)

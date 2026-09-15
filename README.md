@@ -16,7 +16,7 @@ The sub repositories, each pulled in through `add_subdirectory`, are:
 * [`dehli-musikk-sampler-engine`](https://github.com/benjamindehli/dehli-musikk-sampler-engine), the shared JUCE sampler engine that loads a JSON manifest plus a FLAC sample bundle and renders it as audio and a data driven UI. Every plugin is a thin wrapper around it.
 * [`ds-plugin-converter`](https://github.com/benjamindehli/ds-plugin-converter), a build time CLI that translates a DecentSampler library into the engine's manifest and asset bundle.
 * [`dehli-musikk-sampler-plugin-editor`](https://github.com/benjamindehli/dehli-musikk-sampler-plugin-editor), "DMSE Studio", a desktop app for authoring and editing plugins against the real engine.
-* The 13 plugin products, one per sample library: Omni-84, Maskintrommer, Midnight Wurli, Elektrisk Salmesykkel, EDB-Orgel, Strykebrett, StyloPoly, SubC, Lo-fi Tape Piano, Voltage Controlled Cassette Organ, and the 4-track Glockenspiel, Toy Piano and Music Box.
+* The 13 plugin products, one per sample library: Omni-84, MaskinTrommer, Midnight Wurli, Elektrisk Salmesykkel, EDB-Orgel, Strykebrett, StyloPoly, SubC, Lo-fi Tape Piano, Voltage Controlled Cassette Organ, and the 4-track Glockenspiel, Toy Piano and Music Box.
 
 ## The dmse CLI
 
