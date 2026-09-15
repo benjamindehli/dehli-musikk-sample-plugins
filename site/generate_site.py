@@ -994,7 +994,7 @@ def price_badge(price) -> str:
 
 def price_note(price) -> str:
     if float(price["minimum"]) == 0:
-        return "Free — pay what you want." if price["payWhatYouWant"] else "Free."
+        return "Free, or pay what you want." if price["payWhatYouWant"] else "Free."
     if price["payWhatYouWant"]:
         return f"Pay what you want, from {format_price(price)}."
     return format_price(price)
@@ -1195,7 +1195,7 @@ def render_video(videos, title: str, pages=None) -> str:
             'width="480" height="360">'
             '<span class="play" aria-hidden="true"></span></button></div>'
             f'<figcaption class="video-caption"><strong>{html.escape(name)}</strong>'
-            + (f" — {html.escape(description)}" if description and len(videos) > 1 else "")
+            + (f". {html.escape(description)}" if description and len(videos) > 1 else "")
             + (
                 f' <a href="{html.escape(relative_watch_path(index), quote=True)}">Video page</a> ·'
                 if pages
@@ -1357,7 +1357,7 @@ def build_watch_page(video, index: int, ctx) -> None:
     <a href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Store</a>
     <a href="{BRAND_URL}" target="_blank" rel="noopener">{BRAND}</a>
   </nav>
-  <p>{esc(name)} — a demonstration of {esc(ctx["title"])}, a sample instrument by {BRAND}.</p>
+  <p>{esc(name)} is a demonstration of {esc(ctx["title"])}, a sample instrument by {BRAND}.</p>
 </footer>
 
 </body>
@@ -1690,7 +1690,7 @@ def seo_title(title: str, formats) -> str:
     """Keyword-bearing <title>: the product first, then what it actually is."""
     short = [f.replace(" application", "").strip() for f in formats][:3]
     what = ", ".join(short[:-1]) + " & " + short[-1] if len(short) > 1 else (short[0] if short else "")
-    lead = f"{title} — {what} sample instrument" if what else f"{title} — sample instrument"
+    lead = f"{title}: {what} sample instrument" if what else f"{title}: sample instrument"
     return f"{lead} | {BRAND}"
 
 
