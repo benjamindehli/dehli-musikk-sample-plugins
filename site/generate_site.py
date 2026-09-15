@@ -1209,6 +1209,58 @@ def upload_datetime(value: str):
     return f"{value}T12:00:00{'+02:00' if summer else '+01:00'}"
 
 
+# Google reads the duration as ISO 8601 in the structured data and as whole
+# seconds in the video sitemap, so it is stored once, in the ISO form, and
+# converted for the sitemap rather than written out twice.
+DURATION_RE = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
+MAX_SITEMAP_DURATION = 28800  # what the video sitemap schema allows, eight hours
+
+
+def duration_seconds(value):
+    """Seconds for an ISO 8601 duration such as PT2M14S, or None if unusable."""
+    match = DURATION_RE.fullmatch((value or "").strip())
+    if not match or not any(match.groups()):
+        return None
+    hours, minutes, seconds = (int(part or 0) for part in match.groups())
+    total = hours * 3600 + minutes * 60 + seconds
+    return total if total > 0 else None
+
+
+def format_duration(seconds: int) -> str:
+    """2:14, or 1:02:03 once there is an hour of it."""
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes}:{secs:02d}"
+
+
+_DURATION_WARNED = set()
+
+
+def video_duration(video, label: str):
+    """(ISO 8601, seconds) for a video, warning once if it is missing or wrong.
+
+    The watch page and the sitemap both ask, so the complaint is kept to one per
+    video: thirteen useful lines rather than twenty-six that repeat themselves.
+    """
+    def grumble(message: str) -> None:
+        if label not in _DURATION_WARNED:
+            _DURATION_WARNED.add(label)
+            warn(message)
+
+    raw = (video.get("duration") or "").strip()
+    if not raw:
+        grumble(f"{label}: no duration, and Google asks for one on a video page")
+        return None, None
+    seconds = duration_seconds(raw)
+    if not seconds:
+        grumble(f"{label}: duration {raw!r} is not an ISO 8601 length such as PT2M14S")
+        return None, None
+    if seconds > MAX_SITEMAP_DURATION:
+        grumble(f"{label}: duration {raw} is longer than a video sitemap allows")
+        return raw, None
+    return raw, seconds
+
+
 def youtube_id(url: str):
     match = YOUTUBE_ID_RE.search(url or "")
     return match.group(1) if match else None
@@ -1459,6 +1511,8 @@ def render_video(videos, title: str, pages=None) -> str:
         ident = youtube_id(video["contentUrl"])
         name = pick_language(video.get("name")) or f"{title} demo"
         description = pick_language(video.get("description"))
+        # Warned about once per run, by the structured data, not here as well.
+        seconds = duration_seconds(video.get("duration"))
         label = html.escape(f"Play video: {name}", quote=True)
         players.append(
             '<figure class="video-item">'
@@ -1468,6 +1522,7 @@ def render_video(videos, title: str, pages=None) -> str:
             'width="480" height="360">'
             '<span class="play" aria-hidden="true"></span></button></div>'
             f'<figcaption class="video-caption"><strong>{html.escape(name)}</strong>'
+            + (f' <span class="duration">{format_duration(seconds)}</span>' if seconds else "")
             + (f". {html.escape(description)}" if description and len(videos) > 1 else "")
             + (
                 f' <a href="{html.escape(relative_watch_path(index), quote=True)}">Video page</a> ·'
@@ -1651,6 +1706,9 @@ def build_watch_page(video, index: int, ctx) -> None:
     esc = lambda value: html.escape(str(value), quote=True)  # noqa: E731
 
     badges = []
+    watch_seconds = duration_seconds(video.get("duration"))
+    if watch_seconds:
+        badges.append(f'<span class="badge">{esc(format_duration(watch_seconds))}</span>')
     if ctx["price"]:
         badges.append(f'<span class="badge badge-price">{esc(price_badge(ctx["price"]))}</span>')
     if ctx["version"]:
@@ -1679,7 +1737,10 @@ def build_watch_page(video, index: int, ctx) -> None:
     if uploaded:
         video_node["uploadDate"] = uploaded
     else:
-        warn(f"{ctx['title']}: video has no usable uploadDate — Google requires it")
+        warn(f"{ctx['title']}: video has no usable uploadDate, and Google requires it")
+    iso, _ = video_duration(video, f"{ctx['title']} video")
+    if iso:
+        video_node["duration"] = iso
 
     graph = [
         {
@@ -2388,6 +2449,7 @@ def sitemap_xml(pages: str, lastmod, videos=(), title: str = "") -> str:
         name = pick_language(video.get("name")) or f"{title} demo"
         description = pick_language(video.get("description")) or f"A demonstration of {title}."
         published = upload_datetime(video.get("uploadDate"))
+        _, seconds = video_duration(video, f"{title} video")
         # The watch pages are regenerated from the same sources as the product
         # page, so they changed when it did and carry the same lastmod.
         lines = [
@@ -2398,6 +2460,8 @@ def sitemap_xml(pages: str, lastmod, videos=(), title: str = "") -> str:
             f"      <video:description>{html.escape(description)}</video:description>",
             f"      <video:player_loc>https://www.youtube.com/embed/{ident}</video:player_loc>",
         ]
+        if seconds:
+            lines.append(f"      <video:duration>{seconds}</video:duration>")
         if published:
             lines.append(f"      <video:publication_date>{published}</video:publication_date>")
         lines += ["    </video:video>", "  </url>"]

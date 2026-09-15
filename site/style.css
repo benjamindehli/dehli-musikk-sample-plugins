@@ -805,3 +805,8 @@ footer img {
     border-radius: 9px;
     margin-bottom: 0.75rem;
 }
+
+.video-caption .duration {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
