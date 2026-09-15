@@ -1216,6 +1216,28 @@ def pick_language(value, language: str = "en"):
     return value or ""
 
 
+def git_remote(plugin_dir: Path):
+    """(origin URL, why it could not be read).
+
+    The two are told apart on purpose. A repository with no origin is a fact
+    about that repository; git failing to run is a fact about this machine, and
+    is usually temporary. Reporting both as "no git remote" made a transient
+    failure look like a settled answer and quietly stripped the page.
+    """
+    try:
+        done = subprocess.run(
+            ["git", "-C", str(plugin_dir), "remote", "get-url", "origin"],
+            capture_output=True, text=True,
+        )
+    except OSError as exc:
+        return None, f"git could not be run: {exc}"
+    if done.returncode != 0:
+        detail = done.stderr.strip().splitlines()
+        return None, detail[-1] if detail else f"git exited with {done.returncode}"
+    url = done.stdout.strip()
+    return (url, None) if url else (None, "origin is configured with no URL")
+
+
 _META_CACHE = {}
 
 
@@ -1241,11 +1263,8 @@ def _read_meta_uncached(plugin_dir: Path):
         if version:
             meta["version"] = version.group(1)
 
-    try:
-        url = subprocess.run(
-            ["git", "-C", str(plugin_dir), "remote", "get-url", "origin"],
-            check=True, capture_output=True, text=True,
-        ).stdout.strip()
+    url, problem = git_remote(plugin_dir)
+    if url:
         match = re.search(r"github\.com[:/]+([^/]+)/(.+?)(?:\.git)?$", url)
         if match:
             owner, repo = match.group(1), match.group(2)
@@ -1253,8 +1272,21 @@ def _read_meta_uncached(plugin_dir: Path):
             meta["slug"] = f"{owner}/{repo}"
             meta["repo"] = f"https://github.com/{owner}/{repo}"
             meta["pages"] = f"https://{owner}.github.io/{repo}/"
-    except (subprocess.CalledProcessError, OSError):
-        warn(f"{plugin_dir.name}: no git remote — GitHub links will be omitted")
+        else:
+            problem = f"origin is not a GitHub remote ({url})"
+    if problem:
+        # Everything that makes the page findable hangs off this URL: the
+        # canonical link, the structured data, the sitemap and the watch pages.
+        # A checkout that fails to answer is a broken run, not a plugin without
+        # a remote, and publishing the stripped page would be the worse outcome.
+        if (plugin_dir / ".git").exists():
+            die(
+                f"{plugin_dir.name}: could not read the GitHub remote.\n"
+                f"  {problem}\n"
+                "  The page would go out with no canonical URL, no structured data\n"
+                "  and no sitemap, so nothing was written. Run it again."
+            )
+        warn(f"{plugin_dir.name}: {problem}, so GitHub links will be omitted")
 
     overrides = plugin_dir / "site.json"
     if overrides.is_file():
