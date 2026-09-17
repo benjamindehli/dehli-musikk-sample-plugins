@@ -28,3 +28,7 @@ __pycache__/
 
 # dmse signing config (local secrets)
 packaging/signing.env
+
+# Local record of which URLs have been announced to IndexNow. A cache, not
+# project state: losing it only means one redundant ping.
+site/.indexnow-state.json
