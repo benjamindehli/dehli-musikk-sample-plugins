@@ -551,7 +551,7 @@ class Renderer:
         if kind == "heading":
             level = min(block["level"], 6)
             slug = block.get("slug") or slugify(block["text"])
-            anchor = f'<a class="anchor" href="#{slug}" aria-hidden="true">#</a>' if level <= 3 else ""
+            anchor = f'<a class="anchor" href="#{slug}" aria-hidden="true" tabindex="-1">#</a>' if level <= 3 else ""
             return f'<h{level} id="{slug}">{anchor}{self.inline(block["text"])}</h{level}>'
 
         if kind == "para":
@@ -895,7 +895,7 @@ def render_faq(faq) -> str:
     )
     return (
         '<section id="faq">'
-        '<h2><a class="anchor" href="#faq" aria-hidden="true">#</a>'
+        '<h2><a class="anchor" href="#faq" aria-hidden="true" tabindex="-1">#</a>'
         "Frequently asked questions</h2>"
         f'<div class="faq">{items}</div></section>'
     )
@@ -1085,7 +1085,7 @@ def render_glance(rows) -> str:
     )
     return (
         '<section id="at-a-glance">'
-        '<h2><a class="anchor" href="#at-a-glance" aria-hidden="true">#</a>At a glance</h2>'
+        '<h2><a class="anchor" href="#at-a-glance" aria-hidden="true" tabindex="-1">#</a>At a glance</h2>'
         f'<dl class="specs">{pairs}</dl></section>'
     )
 
@@ -1652,7 +1652,7 @@ def render_video(videos, title: str, pages=None) -> str:
 
     return (
         '<section id="demo-video">'
-        '<h2><a class="anchor" href="#demo-video" aria-hidden="true">#</a>'
+        '<h2><a class="anchor" href="#demo-video" aria-hidden="true" tabindex="-1">#</a>'
         + ("Videos" if len(videos) > 1 else "Video")
         + "</h2>"
         + lead
@@ -1969,6 +1969,8 @@ def build_watch_page(video, index: int, ctx) -> None:
 </head>
 <body>
 
+<a class="skip" href="#content">Skip to the content</a>
+
 <header class="topbar">
   {icon_tag}
   <a class="name" href="{up}">{esc(ctx["title"])}</a>
@@ -1976,7 +1978,7 @@ def build_watch_page(video, index: int, ctx) -> None:
   <a class="btn btn-primary btn-sm" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Get it</a>
 </header>
 
-<main class="watch">
+<main class="watch" id="content">
   <h1>{esc(name)}</h1>
   <div class="video">
     <iframe src="https://www.youtube.com/embed/{ident}" title="{esc(name)}"
@@ -2107,7 +2109,7 @@ def build_404_page(ctx) -> None:
   <a class="btn btn-primary btn-sm" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Get it</a>
 </header>
 
-<div class="hero">
+<main class="hero" id="content">
   <h1>Page not found</h1>
   <p class="tagline">That page does not exist on the {esc(ctx["title"])} site.
   It may have been renamed, or the link that brought you here may be out of date.</p>
@@ -2115,7 +2117,7 @@ def build_404_page(ctx) -> None:
     <a class="btn btn-primary" href="{base}">{esc(ctx["title"])} product page</a>
     <a class="btn" href="{esc(ctx["store_url"])}" target="_blank" rel="noopener">Store</a>
   </div>
-</div>
+</main>
 
 <footer>
   <nav>
@@ -2239,7 +2241,7 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
         )
         body.append(
             f'<section id="{section["slug"]}">'
-            f'<h2><a class="anchor" href="#{section["slug"]}" aria-hidden="true">#</a>'
+            f'<h2><a class="anchor" href="#{section["slug"]}" aria-hidden="true" tabindex="-1">#</a>'
             f'{renderer.inline(section["title"])}</h2>{content}</section>'
         )
     if faq_html and not faq_anchor:
@@ -2844,6 +2846,8 @@ def page_html(**ctx) -> str:
 </head>
 <body>
 
+<a class="skip" href="#content">Skip to the content</a>
+
 <header class="topbar">
   {topbar_icon}
   <a class="name" href="#">{esc(ctx["title"])}</a>
@@ -2872,7 +2876,7 @@ def page_html(**ctx) -> str:
     <p class="toc-title" id="toc-title">On this page</p>
     <ul>{ctx["toc"]}</ul>
   </nav>
-  <main>
+  <main id="content">
 {ctx["body"]}
   </main>
 </div>
