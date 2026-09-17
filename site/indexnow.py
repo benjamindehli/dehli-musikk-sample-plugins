@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import ssl
 import sys
 import urllib.error
 import urllib.parse
@@ -70,8 +72,6 @@ def read_key(explicit=None) -> str:
     <key>.txt, because serving it there is the whole proof of ownership, so
     committing it alongside the generator is fine and saves a setup step.
     """
-    import os
-
     key = (explicit or os.environ.get("DMSE_INDEXNOW_KEY") or "").strip()
     source = "--key" if explicit else "DMSE_INDEXNOW_KEY"
     if not key and KEY_FILE.is_file():
@@ -150,8 +150,46 @@ def host_of(url: str) -> str:
     return urllib.parse.urlsplit(url).netloc
 
 
+def trust_store():
+    """A verifying SSL context, working around interpreters that have no CAs.
+
+    The python.org macOS installers bundle their own OpenSSL, which does not
+    read the system keychain, so a fresh install trusts nothing until its
+    Install Certificates.command has been run. certifi is a real CA bundle and
+    a fine answer where it exists. Turning verification off is not, which is why
+    that is nowhere in here: the request carries the key.
+    """
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+APPLE_PYTHON = "/usr/bin/python3"
+
+
+def certificate_advice(endpoint: str) -> str:
+    """What to actually do about an interpreter that trusts no certificates."""
+    command = Path(sys.prefix).parent.parent / "Install Certificates.command"
+    lines = [
+        f"  {sys.executable} has no CA certificates it can use, so it cannot",
+        f"  verify {urllib.parse.urlsplit(endpoint).netloc}. Nothing was sent. Any of these fixes it:",
+    ]
+    if command.is_file():
+        lines.append(f'    open "{command}"')
+    if Path(APPLE_PYTHON).exists() and sys.executable != APPLE_PYTHON:
+        lines.append(
+            f"    PYTHON={APPLE_PYTHON} ./dmse indexnow all --submit"
+            "    # Apple's Python trusts the keychain"
+        )
+    lines.append(f"    {sys.executable} -m pip install certifi")
+    return "\n".join(lines)
+
+
 def submit(endpoint: str, host: str, key: str, key_location: str, urls):
-    """POST one batch. Returns (status, body) or raises for a transport failure."""
+    """POST one batch. (status, body), or (None, reason) if it never got there."""
     payload = json.dumps(
         {"host": host, "key": key, "keyLocation": key_location, "urlList": list(urls)}
     ).encode("utf-8")
@@ -161,11 +199,19 @@ def submit(endpoint: str, host: str, key: str, key_location: str, urls):
         method="POST",
         headers={"Content-Type": "application/json; charset=utf-8", "User-Agent": "dmse-indexnow/1.0"},
     )
+    context = trust_store() if urllib.parse.urlsplit(endpoint).scheme == "https" else None
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=30, context=context) as response:
             return response.status, response.read().decode("utf-8", "replace").strip()
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode("utf-8", "replace").strip()
+    except urllib.error.URLError as exc:
+        reason = exc.reason
+        if isinstance(reason, ssl.SSLCertVerificationError):
+            return None, "no usable CA certificates\n" + certificate_advice(endpoint)
+        return None, f"could not reach {endpoint}: {reason}"
+    except OSError as exc:  # a socket timeout and friends never become URLError
+        return None, f"could not reach {endpoint}: {exc}"
 
 
 # What the protocol's status codes actually mean, since "403" on its own sends
@@ -245,6 +291,14 @@ def main(argv=None) -> int:
     for start in range(0, len(urls), MAX_URLS):
         batch = urls[start:start + MAX_URLS]
         status, body = submit(args.endpoint, host, key, key_location, batch)
+        if status is None:
+            # It never reached the endpoint, so nothing is recorded and the next
+            # run offers the same URLs again.
+            head, _, detail = body.partition("\n")
+            warn(f"the submission did not go out: {head}")
+            if detail:
+                print(detail, file=sys.stderr)
+            return 1
         meaning = STATUS_HELP.get(status, "unexpected status")
         if status in (200, 202):
             info(f"{status} {meaning} ({len(batch)} URLs)")
