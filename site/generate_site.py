@@ -1362,7 +1362,7 @@ def last_commit_date(path: Path):
     """
     if path in _COMMIT_DATE_CACHE:
         return _COMMIT_DATE_CACHE[path]
-    date = None
+    date = trouble = None
     if path.is_file():
         try:
             done = subprocess.run(
@@ -1371,10 +1371,19 @@ def last_commit_date(path: Path):
                 capture_output=True, text=True,
             )
             found = done.stdout.strip()
-            if done.returncode == 0 and ISO_DATE_RE.fullmatch(found):
+            if done.returncode != 0:
+                detail = done.stderr.strip().splitlines()
+                trouble = detail[-1] if detail else f"git exited with {done.returncode}"
+            elif ISO_DATE_RE.fullmatch(found):
                 date = found
-        except OSError:
-            pass
+            # git ran and said nothing: the file simply has no commit yet, which
+            # is ordinary during a first run and not worth a warning.
+        except OSError as exc:
+            trouble = f"git could not be run: {exc}"
+    if trouble:
+        # Quiet failure was the original intent, but a silently old lastmod now
+        # also decides what ./dmse indexnow announces, so say it happened.
+        warn(f"could not date {path.name} ({trouble}); the page may claim an older lastmod")
     _COMMIT_DATE_CACHE[path] = date
     return date
 
@@ -2356,7 +2365,8 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
 
     if pages:
         (out_dir / "sitemap.xml").write_text(
-            sitemap_xml(pages, modified, videos, title), encoding="utf-8"
+            sitemap_xml(pages, modified, videos, title, page_images(images)),
+            encoding="utf-8",
         )
         (out_dir / "robots.txt").write_text(
             f"User-agent: *\nAllow: /\n\nSitemap: {pages}sitemap.xml\n", encoding="utf-8"
@@ -2624,11 +2634,37 @@ def structured_data(**ctx) -> str:
     )
 
 
-def sitemap_xml(pages: str, lastmod, videos=(), title: str = "") -> str:
+# Thumbnails of the other instruments, and the icon every plugin shares. Both
+# appear on the page but belong to it no more than a nameplate does: the
+# thumbnail is a downscaled copy of another product's hero, which that product's
+# own page already lists, and the icon is byte-identical across all thirteen.
+NOT_OUR_IMAGE = ("more-", "icon.")
+
+
+def page_images(images: Images):
+    """The images this page is actually about: its screenshots and its gear shots."""
+    return [
+        entry["url"]
+        for entry in images.entries
+        if not Path(entry["url"]).name.startswith(NOT_OUR_IMAGE)
+    ]
+
+
+def sitemap_xml(pages: str, lastmod, videos=(), title: str = "", images=()) -> str:
     """The product page plus one entry per watch page, the latter carrying the
-    video sitemap extension Google asks for when you want video indexed."""
+    video sitemap extension Google asks for when you want video indexed.
+
+    The product page carries the image extension for the same reason. Only
+    image:loc is written: Google dropped support for image:title, image:caption,
+    image:license and image:geo_location in 2022, so anything else is bytes the
+    crawler discards.
+    """
     stamp = f"\n    <lastmod>{lastmod}</lastmod>" if lastmod else ""
-    entries = [f"  <url>\n    <loc>{pages}</loc>{stamp}\n  </url>"]
+    shots = "".join(
+        f"\n    <image:image>\n      <image:loc>{pages}{url}</image:loc>\n    </image:image>"
+        for url in images
+    )
+    entries = [f"  <url>\n    <loc>{pages}</loc>{stamp}{shots}\n  </url>"]
 
     for index, video in enumerate(videos):
         ident = youtube_id(video["contentUrl"])
@@ -2656,6 +2692,7 @@ def sitemap_xml(pages: str, lastmod, videos=(), title: str = "") -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+        '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n'
         '        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n'
         + "\n".join(entries)
         + "\n</urlset>\n"
