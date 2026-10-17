@@ -40,11 +40,13 @@ enable_testing()
 
 # ---------------------------------------------------------------------------
 # JUCE — fetched once here and shared by every sub-project.
-# Bump JUCE_GIT_TAG as needed; any JUCE 8.0.x tag should work.
+# A plain variable, not a cache entry: a cached tag would pin every existing build
+# dir to whatever version it was first configured with, so a bump here would never
+# reach them.
 # ---------------------------------------------------------------------------
 include(FetchContent)
 
-set(JUCE_GIT_TAG "8.0.4" CACHE STRING "JUCE git tag to build against")
+set(JUCE_GIT_TAG "9.0.4")
 
 FetchContent_Declare(
     JUCE
