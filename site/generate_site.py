@@ -40,6 +40,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import urllib.parse
 from pathlib import Path
 
@@ -105,6 +106,15 @@ def warn(msg: str) -> None:
 def die(msg: str) -> "NoReturn":  # noqa: F821
     print(f"Error: {msg}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def shown(path: Path) -> str:
+    """A path as the log shows it: relative to the workspace when it is inside,
+    so the --check run, which writes to a temporary folder, can log it too."""
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
 
 
 def slugify(text: str) -> str:
@@ -1759,7 +1769,7 @@ def is_self_link(line: str, pages: str) -> bool:
     return bool(match and match.group(1).rstrip("/") == pages.rstrip("/"))
 
 
-def build_root_llms(data) -> None:
+def build_root_llms(data, out_dir: Path = SITE_DIR / "user-site") -> None:
     """An llms.txt index of the instruments, for the user site to publish.
 
     Written next to the sitemap index and for the same reason: one URL at the
@@ -1806,10 +1816,9 @@ def build_root_llms(data) -> None:
     out += [f"- [{title}]({pages}llms.txt)" for title, pages, _ in rows]
     out.append("")
 
-    out_dir = SITE_DIR / "user-site"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "llms.txt").write_text("\n".join(out), encoding="utf-8")
-    info(f"llms.txt index for {len(rows)} instruments → {out_dir.relative_to(ROOT)}/")
+    info(f"llms.txt index for {len(rows)} instruments → {shown(out_dir)}/")
 
 
 # ── page assembly ────────────────────────────────────────────────────────────
@@ -2022,7 +2031,7 @@ def build_watch_page(video, index: int, ctx) -> None:
     (directory / "index.html").write_text(page, encoding="utf-8")
 
 
-def build_root_sitemap(data) -> None:
+def build_root_sitemap(data, out_dir: Path = SITE_DIR / "user-site") -> None:
     """A sitemap index for the user site, benjamindehli.github.io.
 
     A robots.txt only counts at the domain root, so the one each project site
@@ -2048,7 +2057,6 @@ def build_root_sitemap(data) -> None:
     if not sites:
         return
 
-    out_dir = SITE_DIR / "user-site"
     out_dir.mkdir(parents=True, exist_ok=True)
     index = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -2083,7 +2091,7 @@ def build_root_sitemap(data) -> None:
         "removed.\n",
         encoding="utf-8",
     )
-    info(f"Root sitemap index for {len(sites)} sites → {out_dir.relative_to(ROOT)}/")
+    info(f"Root sitemap index for {len(sites)} sites → {shown(out_dir)}/")
 
 
 def build_404_page(ctx) -> None:
@@ -2983,6 +2991,82 @@ def page_html(**ctx) -> str:
 
 # ── entry point ──────────────────────────────────────────────────────────────
 
+# Compared byte for byte. Everything else is a picture, which each image tool
+# encodes a little differently (sips on a Mac, cwebp, Pillow), so pictures are
+# compared by name only: the right files are there and no stale ones are left.
+TEXT_SUFFIXES = {".html", ".xml", ".txt", ".md", ".json", ".css", ""}
+IGNORED_NAMES = {".DS_Store"}
+
+
+def plugin_path(name: str) -> Path:
+    plugin_dir = (ROOT / name).resolve() if not Path(name).is_absolute() else Path(name)
+    if not plugin_dir.is_dir():
+        die(f"no such plugin directory: {name}")
+    return plugin_dir
+
+
+def stale_files(committed: Path, fresh: Path):
+    """The files that differ between a committed folder and a fresh build of
+    it, each with the reason, as (relative path, reason) pairs."""
+    def listing(folder):
+        if not folder.is_dir():
+            return {}
+        return {
+            p.relative_to(folder).as_posix(): p
+            for p in folder.rglob("*")
+            if p.is_file() and p.name not in IGNORED_NAMES
+        }
+
+    old, new = listing(committed), listing(fresh)
+    found = []
+    for name in sorted(set(old) | set(new)):
+        if name not in old:
+            found.append((name, "missing, would be written"))
+        elif name not in new:
+            found.append((name, "left over, would not be written"))
+        elif old[name].suffix in TEXT_SUFFIXES and old[name].read_bytes() != new[name].read_bytes():
+            found.append((name, "out of date"))
+    return found
+
+
+def check_sites(names, out, encoder: Encoder, data) -> int:
+    """Builds every named site, and the user-site files, into a temporary
+    folder and compares them with what is committed. Writes nothing.
+
+    A README edited without running ./dmse site leaves its product page behind
+    with nothing to say so. This is what says so.
+    """
+    stale = 0
+    with tempfile.TemporaryDirectory() as folder:
+        scratch = Path(folder)
+        for name in names:
+            plugin_dir = plugin_path(name)
+            fresh = scratch / plugin_dir.name
+            build_page(plugin_dir, fresh, encoder, data)
+            found = stale_files(plugin_dir / out, fresh)
+            for path, why in found:
+                print(f"  {plugin_dir.name}/{out}/{path}: {why}")
+            stale += bool(found)
+
+        user_site = scratch / "user-site"
+        build_root_sitemap(data, user_site)
+        build_root_llms(data, user_site)
+        found = [
+            (path, why) for path, why in stale_files(SITE_DIR / "user-site", user_site)
+            if why != "left over, would not be written"
+        ]
+        for path, why in found:
+            print(f"  site/user-site/{path}: {why}")
+        stale += bool(found)
+
+    if stale:
+        print("Out of date. Run ./dmse site for the plugins listed, then commit docs/ in each")
+        print("plugin repo that changed, and site/user-site/ here if it is listed.")
+        return 1
+    info(f"All {len(names)} sites and the user-site files are up to date")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Generate a plugin's GitHub Pages site from its README.")
     parser.add_argument("plugins", nargs="+", help="plugin directories (e.g. omni-84-plugin)")
@@ -2994,6 +3078,11 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--data", default=str(PLUGIN_DATA),
         help="shared product data: store links, sameAs profiles and demo videos",
+    )
+    parser.add_argument(
+        "--check", action="store_true",
+        help="write nothing: build into a temporary folder and exit 1 if a "
+             "committed site or the user-site files differ from what would be written",
     )
     parser.add_argument(
         "--allow-unoptimized", action="store_true",
@@ -3016,13 +3105,14 @@ def main(argv=None) -> int:
     info(f"Encoding screenshots as {encoder.describe()}")
     data = load_plugin_data(Path(args.data))
 
+    if args.check:
+        return check_sites(args.plugins, args.out, encoder, data)
+
     for name in args.plugins:
-        plugin_dir = (ROOT / name).resolve() if not Path(name).is_absolute() else Path(name)
-        if not plugin_dir.is_dir():
-            die(f"no such plugin directory: {name}")
+        plugin_dir = plugin_path(name)
         out_dir = plugin_dir / args.out
         build_page(plugin_dir, out_dir, encoder, data)
-        info(f"{plugin_dir.name} → {out_dir.relative_to(ROOT)}/index.html")
+        info(f"{plugin_dir.name} → {shown(out_dir)}/index.html")
 
     build_root_sitemap(data)
     build_root_llms(data)
