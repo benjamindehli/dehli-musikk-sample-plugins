@@ -46,7 +46,7 @@ enable_testing()
 # ---------------------------------------------------------------------------
 include(FetchContent)
 
-set(JUCE_GIT_TAG "9.0.4")
+set(JUCE_GIT_TAG "9.0.6")
 
 FetchContent_Declare(
     JUCE

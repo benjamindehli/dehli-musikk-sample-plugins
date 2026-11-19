@@ -47,7 +47,7 @@ cmake --build build --target Omni84_Standalone
 ctest --test-dir build
 ```
 
-JUCE 8 is fetched automatically. Keep the build path free of parentheses and spaces, since JUCE's plugin manifest and binary data steps mis quote them.
+JUCE is fetched automatically, at the version `JUCE_GIT_TAG` names in `CMakeLists.txt`. Keep the build path free of parentheses and spaces, since JUCE's plugin manifest and binary data steps mis quote them.
 
 ## Product pages
 
