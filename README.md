@@ -60,6 +60,8 @@ Every plugin repository publishes a product page through GitHub Pages, for examp
 
 `site/generate_site.py` reads the plugin's `README.md` and renders it as a designed page: a hero with the icon, the latest version and a link to the store, the largest screenshot as the lead image, the demo video, the full control documentation with every screenshot, the equipment gallery, the release history as a collapsible list, and a strip of links to the other twelve instruments. The README stays the single source of truth, so a page is refreshed by editing the README and running the command again. Never hand edit a `docs/` folder, it is overwritten on the next run.
 
+Beside the page it writes `latest.json`, with the version the page presents and the page's address. The plugin's update check reads it, so a player hears of a new version once its page is published, not when the version is bumped.
+
 What a README cannot express lives in `site/plugin-data.json`, one entry per product, matched to the plugin by title: the store link, the price, the `sameAs` profiles (Gumroad, Cylex, Pianobook, YouTube), the demo video and, where the automatic choice is wrong, a `heroImage`. The lead image is otherwise the largest screenshot, which is right whenever one shot is the full interface, but EDB-Orgel has three equally sized tab screenshots and names its mixer tab explicitly. The store sells pay what you want, so a price is written as a minimum:
 
 ```json

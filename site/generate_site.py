@@ -2380,6 +2380,13 @@ def build_page(plugin_dir: Path, out_dir: Path, encoder: Encoder, data=None) -> 
             f"User-agent: *\nAllow: /\n\nSitemap: {pages}sitemap.xml\n", encoding="utf-8"
         )
 
+    # What the plugin's update check reads: the version this page presents, and
+    # the page itself to send a player to. Written with the page, so the plugin
+    # hears of a release only once its page is published.
+    if pages and version:
+        feed = {"version": version, "url": pages}
+        (out_dir / "latest.json").write_text(json.dumps(feed, indent=4) + "\n", encoding="utf-8")
+
 
 def prune_watch_pages(out_dir: Path, count: int) -> None:
     """Drop watch pages left over from a video that was removed from the data."""
