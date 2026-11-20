@@ -8,12 +8,10 @@
 #   * Authenticode-sign     — needs a code-signing cert (add as a secret later).
 # Those become follow-up stages once the cert + a way to feed CI the sample packs are sorted.
 #
-# The sibling repos are public under github.com/benjamindehli. Their repo names DIFFER from
-# the local folder names the root CMake add_subdirectory()s (no "-plugin" suffix, different
-# casing), so each is cloned INTO the expected folder (see the repo->dest map below). The
-# engine + converter repo names are assumed to match their folders — adjust if not.
-# If any repo is private, give the clone step a PAT secret (the default GITHUB_TOKEN can't
-# reach other repos). All 13 plugins must be present to configure.
+# The sibling repos are public under github.com/benjamindehli and are cloned into the
+# folders the root CMake adds by .github/scripts/fetch-siblings.sh, which the pluginval
+# workflow uses too. If any repo is private, give the clone step a PAT secret (the default
+# GITHUB_TOKEN can't reach other repos). All 13 plugins must be present to configure.
 
 name: Windows build
 
@@ -31,31 +29,7 @@ jobs:
 
       - name: Fetch sibling repos (engine + converter + plugins)
         shell: bash
-        run: |
-          set -euo pipefail
-          # "<github-repo> <dest-folder>" — dest must match the root CMake add_subdirectory().
-          repos=(
-            "dehli-musikk-sampler-engine dehli-musikk-sampler-engine"
-            "ds-plugin-converter ds-plugin-converter"
-            "Omni-84 omni-84-plugin"
-            "MaskinTrommer maskintrommer-plugin"
-            "MidnightWurli midnight-wurli-plugin"
-            "ElektriskSalmesykkel elektrisk-salmesykkel-plugin"
-            "4-track-glockenspiel 4-track-glockenspiel-plugin"
-            "4-track-toy-piano 4-track-toy-piano-plugin"
-            "4-track-music-box 4-track-music-box-plugin"
-            "EDB-Orgel edb-orgel-plugin"
-            "Strykebrett strykebrett-plugin"
-            "VoltageControlledCassetteOrgan voltage-controlled-cassette-organ-plugin"
-            "lo-fi-tape-piano lo-fi-tape-piano-plugin"
-            "StyloPoly stylopoly-plugin"
-            "SubC subc-plugin"
-          )
-          for pair in "${repos[@]}"; do
-            set -- $pair
-            echo "== cloning $1 -> $2 =="
-            git clone --depth 1 "https://github.com/benjamindehli/$1.git" "$2"
-          done
+        run: bash .github/scripts/fetch-siblings.sh
 
       - name: Configure (MSVC, x64)
         # Build into a SHORT root (C:\b). The runner checks out to

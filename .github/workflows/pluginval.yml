@@ -1,0 +1,84 @@
+# pluginval against every instrument's VST3, on Linux.
+#
+# pluginval is a host that loads a plugin and misuses it on purpose: odd block
+# sizes, parameters set from the wrong thread, state saved and restored
+# mid-render, buses enabled that nothing asked for, and the editor opened and
+# closed. The engine's own tests drive the processor directly, so none of that
+# is reachable from them.
+#
+# The instruments are built from the heads of their repos, cloned beside the
+# engine as the Windows build does. The sample packs are paid content and not
+# in any repo, so every instrument here loads without its samples: it opens,
+# shows its face and its missing-samples notice, and plays nothing. That is the
+# path this validates, and it is the one a player meets after a failed install.
+#
+# The engine and the instruments live in their own repos, so a change there
+# does not start this. The weekly run is what catches one, with a seed nobody
+# chose (see run-pluginval.sh).
+
+name: pluginval
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "41 6 * * 1"
+
+# The job only reads public repositories and builds them.
+permissions:
+  contents: read
+
+concurrency:
+  group: pluginval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pluginval:
+    name: pluginval (Linux)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+    steps:
+      - name: Checkout orchestration root
+        uses: actions/checkout@v7
+
+      - name: Fetch the engine, the converter and the 13 plugin repos
+        run: bash .github/scripts/fetch-siblings.sh
+
+      - name: Install JUCE build dependencies, and xvfb and gdb for pluginval
+        timeout-minutes: 10
+        run: bash .github/scripts/install-linux-deps.sh xvfb gdb
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      # The VST3s alone. The standalone apps, the converter and DMSE Studio are
+      # not loaded by pluginval.
+      - name: Build every VST3
+        run: |
+          targets=$(cmake --build build --target help | grep -oE '[A-Za-z0-9]+_VST3' | sort -u)
+          echo "$targets"
+          test "$(echo "$targets" | wc -l)" -eq 13
+          cmake --build build --target $targets --parallel 3
+
+      - name: Fetch pluginval
+        run: bash .github/scripts/fetch-pluginval.sh
+
+      # Every instrument, even after one fails, so a run lists them all.
+      - name: Validate every VST3
+        run: |
+          failed=()
+          while IFS= read -r -d '' vst3; do
+            name=$(basename "$vst3" .vst3)
+            echo "::group::$name"
+            if ! timeout 25m bash .github/scripts/run-pluginval.sh "$vst3"; then
+              failed+=("$name")
+            fi
+            echo "::endgroup::"
+          done < <(find build -type d -name '*.vst3' -path '*/Release/VST3/*' -print0 | sort -z)
+
+          if [ "${#failed[@]}" -ne 0 ]; then
+            echo "::error::pluginval failed for: ${failed[*]}"
+            exit 1
+          fi
+          echo "all 13 passed"
