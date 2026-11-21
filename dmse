@@ -26,6 +26,8 @@
 #   ./dmse site omni-84         # render README + Screenshots into docs/ (GitHub Pages)
 #   ./dmse site all             # ... all 13 product pages
 #   ./dmse site all --check     # ... report pages that are behind their README, exit 1 if any
+#   ./dmse copy subc            # write the store description to paste (build/copy/)
+#   ./dmse copy all             # ... for every plugin
 #   ./dmse indexnow all         # show which pages changed since the last ping
 #   ./dmse indexnow all --submit  # ... and tell Bing/Yandex about them (IndexNow)
 #   ./dmse configure            # (re)run cmake; also done automatically when needed
@@ -96,7 +98,7 @@ cmd_list() {
     registry | while IFS='|' read -r dir tgt prod; do
         printf '  %-35s %-32s %s\n' "${dir%-plugin}" "$tgt" "$prod"
     done
-    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · screenshots · site · indexnow · configure · list\n' "$B" "$N"
+    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · screenshots · site · copy · indexnow · configure · list\n' "$B" "$N"
 }
 
 cmd_convert() {
@@ -319,6 +321,23 @@ cmd_site() {
   \"Deploy from a branch\" → main → /docs in the repo settings."
 }
 
+cmd_copy() {
+    need_plugin "${1:-}"
+    local dir tgt prod dirs=""
+    while IFS='|' read -r dir tgt prod; do dirs="$dirs $dir"; done <<< "$(records_for "$1")"
+    shift || true
+
+    local py
+    for py in "${PYTHON:-}" python3 /usr/bin/python3; do
+        [ -n "$py" ] && command -v "$py" >/dev/null 2>&1 && break
+    done
+    [ -n "${py:-}" ] || die "python3 not found (it ships with the Xcode command line tools)"
+
+    info "Writing product descriptions:$dirs"
+    "$py" site/copy.py $dirs "$@"
+    info "${GRN}Done.$N Open one with:  open build/copy/<plugin>/gumroad.html"
+}
+
 cmd_indexnow() {
     local dirs="" dir tgt prod
     case "${1:-all}" in
@@ -356,6 +375,7 @@ case "$cmd" in
     tarball|linux)  cmd_tarball "$@" ;;
     screenshots|shots) cmd_screenshots "$@" ;;
     site|pages)     cmd_site "$@" ;;
+    copy)           cmd_copy "$@" ;;
     indexnow|ping)  cmd_indexnow "$@" ;;
     help|-h|--help) cmd_help ;;
     # Hidden helper for shell completion: fast (registry only, no cmake) list of the

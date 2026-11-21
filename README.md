@@ -33,6 +33,7 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ./dmse tarball omni-84      # build the Linux .tar.gz
 ./dmse screenshots omni-84  # render the plugin's Screenshots/ images from its recipe
 ./dmse site omni-84         # render the product page into the plugin's docs/ folder
+./dmse copy omni-84         # write the store description to paste, in build/copy/
 ./dmse configure            # (re)run cmake, also done automatically when needed
 ```
 
@@ -105,6 +106,17 @@ A single plugin can override the shared data with an optional `site.json` in its
 ```
 
 A `price` here may be a plain number or the same object as in the shared data. A project page's `robots.txt` only applies at the domain root, so the one each plugin site generates is never actually read. `site/user-site/` holds the two files that are: a `robots.txt` and a sitemap index listing all thirteen sitemaps, to be published from the root of the `benjamindehli.github.io` repository. They are regenerated on every `./dmse site` run, from every plugin in the workspace rather than only the ones being built.
+
+## Descriptions for the other sites
+
+The store has its own description editor, with no way to paste markdown or HTML source, so its description is made from the README and pasted as formatted text:
+
+```
+./dmse copy omni-84         # one plugin
+./dmse copy all             # all 13
+```
+
+`site/copy.py` writes `build/copy/<plugin>/gumroad.html`, the README as the store shows it. It leaves out the title, the link to the product page, the technical specification, which the editor cannot hold as a table, and the notes about the repository. Images point at the files in the plugin's public GitHub repository. Open the page in a browser, press "Copy description" and paste it into the store's description editor below the video, since a paste cannot carry the video.
 
 ## Packaging and distribution
 
