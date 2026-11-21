@@ -59,7 +59,7 @@ Each plugin's `Screenshots/` images are rendered from the plugin itself, so they
 ./dmse screenshots omni-84 --only Bass.png   # one of them
 ```
 
-The recipe is `Screenshots/screenshots.json` in each plugin repo. Each entry names a file, the mode to show, which knobs, buttons and menus to set first, and either the whole standalone window, title bar included, or a crop of the instrument's face. The format is described at the top of `dehli-musikk-sampler-plugin-editor/tools/Screenshots.cpp`. Images are rendered at twice the interface size, without the sample pack, which the face does not need. The plugin draws some of its text in the system font, so render the images meant for the product pages on a Mac. Run `./dmse site` afterwards to put them on the product page.
+The recipe is `Screenshots/screenshots.json` in each plugin repo. Each entry names a file, the mode to show, which knobs, buttons, menus and other plugin parameters, such as the drift wheels, to set first, and either the whole standalone window, title bar included, or a crop of the instrument's face. The format is described at the top of `dehli-musikk-sampler-plugin-editor/tools/Screenshots.cpp`. Images are rendered at twice the interface size, without the sample pack, which the face does not need. The plugin draws some of its text in the system font, so render the images meant for the product pages on a Mac. Run `./dmse site` afterwards to put them on the product page.
 
 ## Product pages
 
