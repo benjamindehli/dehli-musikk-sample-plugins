@@ -277,7 +277,12 @@ cmd_screenshots() {
     shift || true   # remaining args pass through to the renderer (e.g. --only Bass.png)
     ensure_configured
     info "Building the screenshot renderer"
-    cmake --build "$BUILD_DIR" --target DmseScreenshots
+    # A build folder configured before the renderer existed does not know its
+    # target, and Make stops before CMake can notice, so configure and try again.
+    cmake --build "$BUILD_DIR" --target DmseScreenshots 2>/dev/null || {
+        cmd_configure
+        cmake --build "$BUILD_DIR" --target DmseScreenshots
+    }
     local tool; tool=$(find_artifact DmseScreenshots)
     [ -n "$tool" ] || die "could not find the built DmseScreenshots binary"
     while IFS='|' read -r dir tgt prod; do
