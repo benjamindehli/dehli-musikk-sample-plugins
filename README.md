@@ -31,6 +31,7 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ./dmse format               # reformat all C++ to LLVM style, or --check to just report
 ./dmse package omni-84      # sign and notarize the macOS .pkg (needs signing config)
 ./dmse tarball omni-84      # build the Linux .tar.gz
+./dmse screenshots omni-84  # render the plugin's Screenshots/ images from its recipe
 ./dmse site omni-84         # render the product page into the plugin's docs/ folder
 ./dmse configure            # (re)run cmake, also done automatically when needed
 ```
@@ -48,6 +49,17 @@ ctest --test-dir build
 ```
 
 JUCE is fetched automatically, at the version `JUCE_GIT_TAG` names in `CMakeLists.txt`. Keep the build path free of parentheses and spaces, since JUCE's plugin manifest and binary data steps mis quote them.
+
+## Screenshots
+
+Each plugin's `Screenshots/` images are rendered from the plugin itself, so they are made again rather than by hand when the interface changes:
+
+```
+./dmse screenshots omni-84                   # every image in the recipe
+./dmse screenshots omni-84 --only Bass.png   # one of them
+```
+
+The recipe is `Screenshots/screenshots.json` in each plugin repo. Each entry names a file, the mode to show, which knobs, buttons and menus to set first, and either the whole standalone window, title bar included, or a crop of the instrument's face. The format is described at the top of `dehli-musikk-sampler-plugin-editor/tools/Screenshots.cpp`. Images are rendered at twice the interface size, without the sample pack, which the face does not need. The plugin draws some of its text in the system font, so render the images meant for the product pages on a Mac. Run `./dmse site` afterwards to put them on the product page.
 
 ## Product pages
 

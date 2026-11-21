@@ -20,6 +20,9 @@
 #   ./dmse package omni-84      # sign + notarize the macOS .pkg  (needs signing config)
 #   ./dmse package all          # ... all 13
 #   ./dmse tarball omni-84      # build the Linux .tar.gz
+#   ./dmse screenshots omni-84  # render Screenshots/ from the plugin, per Screenshots/screenshots.json
+#   ./dmse screenshots all      # ... every plugin that has a recipe
+#   ./dmse screenshots omni-84 --only Bass.png  # ... just one image
 #   ./dmse site omni-84         # render README + Screenshots into docs/ (GitHub Pages)
 #   ./dmse site all             # ... all 13 product pages
 #   ./dmse site all --check     # ... report pages that are behind their README, exit 1 if any
@@ -93,7 +96,7 @@ cmd_list() {
     registry | while IFS='|' read -r dir tgt prod; do
         printf '  %-35s %-32s %s\n' "${dir%-plugin}" "$tgt" "$prod"
     done
-    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · site · indexnow · configure · list\n' "$B" "$N"
+    printf '\n%sCommands:%s convert · build · rebuild · run · test · package · tarball · screenshots · site · indexnow · configure · list\n' "$B" "$N"
 }
 
 cmd_convert() {
@@ -268,6 +271,23 @@ cmd_tarball() {
     BUILD_DIR="$BUILD_DIR" packaging/linux/make_tarballs.sh $targets
 }
 
+cmd_screenshots() {
+    need_plugin "${1:-}"
+    local recs dir tgt prod; recs=$(records_for "$1")   # resolve BEFORE building anything
+    shift || true   # remaining args pass through to the renderer (e.g. --only Bass.png)
+    ensure_configured
+    info "Building the screenshot renderer"
+    cmake --build "$BUILD_DIR" --target DmseScreenshots
+    local tool; tool=$(find_artifact DmseScreenshots)
+    [ -n "$tool" ] || die "could not find the built DmseScreenshots binary"
+    while IFS='|' read -r dir tgt prod; do
+        [ -f "$dir/Screenshots/screenshots.json" ] || { warn "$dir has no Screenshots/screenshots.json, skipping"; continue; }
+        info "Rendering $prod's screenshots"
+        "$tool" "$dir" "$@"
+    done <<< "$recs"
+    info "${GRN}Done.$N Then ./dmse site <plugin> to put them on the product page."
+}
+
 cmd_site() {
     need_plugin "${1:-}"
     local recs dir tgt prod dirs=""
@@ -329,6 +349,7 @@ case "$cmd" in
     format|fmt)     cmd_format "$@" ;;
     package|pkg)    cmd_package "$@" ;;
     tarball|linux)  cmd_tarball "$@" ;;
+    screenshots|shots) cmd_screenshots "$@" ;;
     site|pages)     cmd_site "$@" ;;
     indexnow|ping)  cmd_indexnow "$@" ;;
     help|-h|--help) cmd_help ;;
