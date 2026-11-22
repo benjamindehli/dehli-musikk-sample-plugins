@@ -488,7 +488,13 @@ def main(argv=None) -> int:
         caller = Path(os.environ.get("DMSE_CALLER_DIR", Path.cwd()))
         path = (caller / args.dehlimusikk.expanduser()).resolve()
         if not path.is_file():
-            site.die(f"{args.dehlimusikk}: no such file")
+            if path.is_dir():
+                found = sorted(f.name for f in path.glob("*.json"))
+                site.die(f"{path} is a folder, give the product file in it"
+                         + (f" ({site.join_words(found)})" if found else ""))
+            if path.with_suffix(".json").is_file():
+                site.die(f"{path}: no such file, did you mean {path.with_suffix('.json')}?")
+            site.die(f"{path}: no such file")
         for plugin_dir in update_site_file(path, plugin_dirs):
             prints = site_fingerprints(plugin_dir)
             state.setdefault(plugin_dir.name.removesuffix("-plugin"), {})["dehlimusikk"] = prints["dehlimusikk"]
