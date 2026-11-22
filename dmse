@@ -29,6 +29,7 @@
 #   ./dmse copy subc            # write the store and KVR descriptions (build/copy/)
 #   ./dmse copy all --dehlimusikk products.json  # ... every plugin, and update the site file
 #   ./dmse copy subc --published gumroad  # record that the store has the current text (or kvr, all)
+#   ./dmse copy subc --unreleased       # ... from the working copy, not the latest release tag
 #   ./dmse indexnow all         # show which pages changed since the last ping
 #   ./dmse indexnow all --submit  # ... and tell Bing/Yandex about them (IndexNow)
 #   ./dmse configure            # (re)run cmake; also done automatically when needed

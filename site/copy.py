@@ -26,6 +26,13 @@ that file (matched by title) are replaced with the description as plain lines,
 with equipment named in the README linked to its page on the site. Every other
 field and every other product is left as it is.
 
+The texts describe what is released: the README and the description are read
+as they are at the plugin's latest release tag (v2.1.0 and so on), and images
+point at that tag, so a feature that is only on main does not show up on the
+store before it ships. A file that is newer than every tag, such as a first
+description, is read from the working copy. With --unreleased, everything is
+read from the working copy instead, to see what the next release will say.
+
 Every run ends with the texts that differ from what each site last got, so
 only those pages need opening. After pasting, record it:
 
@@ -64,6 +71,40 @@ STATE_FILE = site.SITE_DIR / ".copy-state.json"
 PASTED_SITES = ("gumroad", "kvr")
 SITE_NAMES = {"gumroad": "the store", "kvr": "KVR", "dehlimusikk": "dehlimusikk.no"}
 GITHUB_RE = re.compile(r"github\.com[:/]([^/]+)/([^/.]+?)(?:\.git)?/?$")
+RELEASE_TAG_GLOB = "v[0-9]*"
+
+# Set by --unreleased: read the working copy rather than the latest release.
+UNRELEASED = False
+_TAGS = {}
+
+
+def release_tag(plugin_dir: Path):
+    """The plugin's latest release tag, or None (also with --unreleased)."""
+    if UNRELEASED:
+        return None
+    if plugin_dir not in _TAGS:
+        done = subprocess.run(
+            ["git", "-C", str(plugin_dir), "tag", "--list", RELEASE_TAG_GLOB, "--sort=-v:refname"],
+            capture_output=True, text=True,
+        )
+        tags = done.stdout.split() if done.returncode == 0 else []
+        _TAGS[plugin_dir] = tags[0] if tags else None
+    return _TAGS[plugin_dir]
+
+
+def read_file(plugin_dir: Path, relative: str):
+    """A file's text as released, or from the working copy when the latest
+    release does not have it. None when it exists in neither."""
+    tag = release_tag(plugin_dir)
+    if tag:
+        done = subprocess.run(
+            ["git", "-C", str(plugin_dir), "show", f"{tag}:{relative}"],
+            capture_output=True,
+        )
+        if done.returncode == 0:
+            return done.stdout.decode("utf-8")
+    path = plugin_dir / relative
+    return path.read_text(encoding="utf-8") if path.is_file() else None
 
 
 class RepoImages:
@@ -120,22 +161,22 @@ def repo_files_url(plugin_dir: Path):
     match = GITHUB_RE.search(url)
     if not match:
         site.die(f"{plugin_dir.name}: origin {url} is not on GitHub")
-    return f"https://raw.githubusercontent.com/{match.group(1)}/{match.group(2)}/main"
+    ref = release_tag(plugin_dir) or "main"
+    return f"https://raw.githubusercontent.com/{match.group(1)}/{match.group(2)}/{ref}"
 
 
 def read_description(plugin_dir: Path, language: str):
     """The blocks of Description/<language>.md, or None when there is none."""
-    path = plugin_dir / "Description" / f"{language}.md"
-    if not path.is_file():
+    text = read_file(plugin_dir, f"Description/{language}.md")
+    if text is None:
         return None
-    blocks, _ = site.parse_markdown(path.read_text(encoding="utf-8"))
+    blocks, _ = site.parse_markdown(text)
     return blocks
 
 
 def store_description(plugin_dir: Path) -> tuple[str, str]:
     """(title, description HTML) for the store page."""
-    text = (plugin_dir / "README.md").read_text(encoding="utf-8")
-    blocks, refs = site.parse_markdown(text)
+    blocks, refs = site.parse_markdown(read_file(plugin_dir, "README.md"))
     title, intro, sections = site.organize(blocks)
     renderer = StoreRenderer(refs, RepoImages(repo_files_url(plugin_dir)))
 
@@ -224,7 +265,7 @@ def kvr_text(plugin_dir: Path):
 
 def equipment_links(plugin_dir: Path):
     """Equipment the README links to on the site, as (name, site path)."""
-    _, refs = site.parse_markdown((plugin_dir / "README.md").read_text(encoding="utf-8"))
+    _, refs = site.parse_markdown(read_file(plugin_dir, "README.md"))
     links = []
     for name, url in refs.items():
         if url.startswith(SITE_URL + "equipment/"):
@@ -447,10 +488,16 @@ def main(argv=None) -> int:
         help="the site's product file, whose entries for these plugins get the description",
     )
     parser.add_argument(
+        "--unreleased", action="store_true",
+        help="read the working copy instead of each plugin's latest release",
+    )
+    parser.add_argument(
         "--published", choices=PASTED_SITES + ("all",), metavar="SITE",
         help="record that these plugins' texts are now on gumroad, kvr or all",
     )
     args = parser.parse_args(argv)
+    global UNRELEASED
+    UNRELEASED = args.unreleased
     plugin_dirs = []
     for name in args.plugins:
         plugin_dir = (ROOT / name).resolve()
@@ -482,7 +529,8 @@ def main(argv=None) -> int:
         else:
             written.append(out_dir / "kvr.html")
             written[1].write_text(kvr, encoding="utf-8")
-        site.info("  ".join(site.shown(p) for p in written))
+        version = release_tag(plugin_dir) or "working copy"
+        site.info(f"{'  '.join(site.shown(p) for p in written)}  ({version})")
     if args.dehlimusikk:
         # A relative path means relative to where ./dmse was run.
         caller = Path(os.environ.get("DMSE_CALLER_DIR", Path.cwd()))

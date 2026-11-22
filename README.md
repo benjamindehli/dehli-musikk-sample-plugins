@@ -121,6 +121,8 @@ Each plugin is also described on dehlimusikk.no, on its store page and on KVR. T
 - `build/copy/<plugin>/kvr.html` is the HTML block for the KVR product page: the demo video, the description and a link to the product page.
 - With `--dehlimusikk`, the `content.en` and `content.no` of each plugin's entry in the site's product file, matched by title, are replaced with the description as plain lines. A list is folded into the line that introduces it, and the features list becomes one "Features:" line. Equipment the README links to on dehlimusikk.no is linked where the description first names it. Every other field and every other product in the file is left as it is.
 
+The texts describe what is released. The README and the description are read as they are at the plugin's latest release tag, such as `v2.1.0`, and images point at that tag, so a feature that is only on `main` does not reach the other sites before it ships. A file that is newer than every tag, such as a first description, is read from the working copy. Add `--unreleased` to read everything from the working copy instead and see what the next release will say.
+
 Every run ends with the plugins whose text differs from what each site last got, so only those pages need opening. After pasting, record it:
 
 ```
