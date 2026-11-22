@@ -26,8 +26,8 @@
 #   ./dmse site omni-84         # render README + Screenshots into docs/ (GitHub Pages)
 #   ./dmse site all             # ... all 13 product pages
 #   ./dmse site all --check     # ... report pages that are behind their README, exit 1 if any
-#   ./dmse copy subc            # write the store description to paste (build/copy/)
-#   ./dmse copy all             # ... for every plugin
+#   ./dmse copy subc            # write the store and KVR descriptions (build/copy/)
+#   ./dmse copy all --dehlimusikk products.json  # ... every plugin, and update the site file
 #   ./dmse indexnow all         # show which pages changed since the last ping
 #   ./dmse indexnow all --submit  # ... and tell Bing/Yandex about them (IndexNow)
 #   ./dmse configure            # (re)run cmake; also done automatically when needed

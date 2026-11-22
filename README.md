@@ -33,7 +33,7 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ./dmse tarball omni-84      # build the Linux .tar.gz
 ./dmse screenshots omni-84  # render the plugin's Screenshots/ images from its recipe
 ./dmse site omni-84         # render the product page into the plugin's docs/ folder
-./dmse copy omni-84         # write the store description to paste, in build/copy/
+./dmse copy omni-84         # write the store and KVR descriptions into build/copy/
 ./dmse configure            # (re)run cmake, also done automatically when needed
 ```
 
@@ -109,14 +109,17 @@ A `price` here may be a plain number or the same object as in the shared data. A
 
 ## Descriptions for the other sites
 
-The store has its own description editor, with no way to paste markdown or HTML source, so its description is made from the README and pasted as formatted text:
+Each plugin is also described on dehlimusikk.no, on its store page and on KVR. Those texts are made here rather than retyped. A plugin's description is `Description/en.md` in its repository, with the Norwegian version in `Description/no.md`: a few paragraphs and a `## Features` list, written by hand. From it and the README, `site/copy.py` writes what each site takes:
 
 ```
 ./dmse copy omni-84         # one plugin
 ./dmse copy all             # all 13
+./dmse copy all --dehlimusikk ~/path/to/products.json
 ```
 
-`site/copy.py` writes `build/copy/<plugin>/gumroad.html`, the README as the store shows it. It leaves out the title, the link to the product page, the technical specification, which the editor cannot hold as a table, and the notes about the repository. Images point at the files in the plugin's public GitHub repository. Open the page in a browser, press "Copy description" and paste it into the store's description editor below the video, since a paste cannot carry the video.
+- `build/copy/<plugin>/gumroad.html` is the store page: the description, then the README without its title, the link to the product page, the technical specification, which the store's editor cannot hold as a table, and the notes about the repository. Images point at the files in the plugin's public GitHub repository. The store's editor takes no markdown or HTML source, so open the page in a browser, press "Copy description" and paste it into the editor below the video, since a paste cannot carry the video.
+- `build/copy/<plugin>/kvr.html` is the HTML block for the KVR product page: the demo video, the description and a link to the product page.
+- With `--dehlimusikk`, the `content.en` and `content.no` of each plugin's entry in the site's product file, matched by title, are replaced with the description as plain lines. A list is folded into the line that introduces it, and the features list becomes one "Features:" line. Equipment the README links to on dehlimusikk.no is linked where the description first names it. Every other field and every other product in the file is left as it is.
 
 ## Packaging and distribution
 
