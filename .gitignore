@@ -32,3 +32,7 @@ packaging/signing.env
 # Local record of which URLs have been announced to IndexNow. A cache, not
 # project state: losing it only means one redundant ping.
 site/.indexnow-state.json
+
+# Local record of which description each other site last got (./dmse copy).
+# Losing it only means every text shows as changed once.
+site/.copy-state.json

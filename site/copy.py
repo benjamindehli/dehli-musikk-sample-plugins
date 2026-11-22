@@ -26,16 +26,31 @@ that file (matched by title) are replaced with the description as plain lines,
 with equipment named in the README linked to its page on the site. Every other
 field and every other product is left as it is.
 
+Every run ends with the texts that differ from what each site last got, so
+only those pages need opening. After pasting, record it:
+
+    ./dmse copy subc --published gumroad     # or kvr, or all
+
+The dehlimusikk.no text is recorded when --dehlimusikk writes it. The record
+is site/.copy-state.json, a local file that is not committed: losing it only
+means every text shows as changed once. A plugin whose Description/en.md has
+changed since its Description/no.md is named too, since the Norwegian text
+then needs a look.
+
 Only the Python standard library is used, so it runs on a stock macOS.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
+import os
 import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -45,6 +60,9 @@ ROOT = site.ROOT
 OUT_DIR = ROOT / "build" / "copy"
 LEFT_OUT = (site.SPEC_SECTION, site.ABOUT_SECTION)
 SITE_URL = "https://www.dehlimusikk.no/"
+STATE_FILE = site.SITE_DIR / ".copy-state.json"
+PASTED_SITES = ("gumroad", "kvr")
+SITE_NAMES = {"gumroad": "the store", "kvr": "KVR", "dehlimusikk": "dehlimusikk.no"}
 GITHUB_RE = re.compile(r"github\.com[:/]([^/]+)/([^/.]+?)(?:\.git)?/?$")
 
 
@@ -181,10 +199,10 @@ def kvr_list(items, renderer, indent: str) -> str:
     return "\n".join(lines)
 
 
-def write_kvr_block(plugin_dir: Path, out_dir: Path):
+def kvr_text(plugin_dir: Path):
+    """The KVR block, or None when the plugin has no description yet."""
     blocks = read_description(plugin_dir, "en")
     if blocks is None:
-        site.warn(f"{plugin_dir.name}: no Description/en.md, so no KVR text")
         return None
     entry = product_data(plugin_dir)
     renderer = StoreRenderer({}, RepoImages(""))
@@ -201,9 +219,7 @@ def write_kvr_block(plugin_dir: Path, out_dir: Path):
             f'<hr />\n<p>\n  <a href="{html.escape(url, quote=True)}">'
             f"Read more about {html.escape(title)} here</a>\n</p>"
         )
-    out = out_dir / "kvr.html"
-    out.write_text("\n\n".join(parts) + "\n", encoding="utf-8")
-    return out
+    return "\n\n".join(parts) + "\n"
 
 
 def equipment_links(plugin_dir: Path):
@@ -257,11 +273,24 @@ def site_lines(blocks, links) -> str:
     return text
 
 
-def update_site_file(path: Path, plugin_dirs) -> None:
+def site_content(plugin_dir: Path):
+    """{language: text} for the site, for the languages that have a file."""
+    links = equipment_links(plugin_dir)
+    content = {}
+    for language in ("en", "no"):
+        blocks = read_description(plugin_dir, language)
+        if blocks is not None:
+            content[language] = site_lines(blocks, links)
+    return content
+
+
+def update_site_file(path: Path, plugin_dirs) -> list:
+    """Write the descriptions into the site's product file. Returns the
+    plugins whose entry now has them."""
     raw = path.read_text(encoding="utf-8")
     products = json.loads(raw)
     by_key = {site.match_key(p.get("title", "")): p for p in products}
-    changed = []
+    changed, written = [], []
     for plugin_dir in plugin_dirs:
         entry = by_key.get(site.match_key(site.read_title(plugin_dir))) or by_key.get(
             site.match_key(plugin_dir.name)
@@ -269,19 +298,20 @@ def update_site_file(path: Path, plugin_dirs) -> None:
         if entry is None:
             site.warn(f"{plugin_dir.name}: no entry with its title in {path.name}")
             continue
-        links = equipment_links(plugin_dir)
         content = entry.setdefault("content", {})
         before = dict(content)
+        new = site_content(plugin_dir)
         for language in ("en", "no"):
-            blocks = read_description(plugin_dir, language)
-            if blocks is None:
+            if language not in new:
                 site.warn(f"{plugin_dir.name}: no Description/{language}.md, content.{language} left as it is")
-                continue
-            content[language] = site_lines(blocks, links)
+        content.update(new)
         if content != before:
             changed.append(entry["title"])
+        if new:
+            written.append(plugin_dir)
     path.write_text(json.dumps(products, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
     site.info(f"{site.shown(path)}: " + (", ".join(changed) if changed else "nothing changed"))
+    return written
 
 
 PAGE = """<!doctype html>
@@ -322,11 +352,91 @@ document.getElementById("copy").addEventListener("click", () => {{
 """
 
 
-def write_store_page(plugin_dir: Path, out_dir: Path) -> Path:
+def store_page_text(plugin_dir: Path) -> str:
     title, body = store_description(plugin_dir)
-    out = out_dir / "gumroad.html"
-    out.write_text(PAGE.format(title=html.escape(title), body=body), encoding="utf-8")
-    return out
+    return PAGE.format(title=html.escape(title), body=body)
+
+
+# ── what each site last got ──────────────────────────────────────────────────
+
+def fingerprint(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def site_fingerprints(plugin_dir: Path) -> dict:
+    """The fingerprint of the text each site would get now."""
+    prints = {"gumroad": fingerprint(store_page_text(plugin_dir))}
+    kvr = kvr_text(plugin_dir)
+    if kvr is not None:
+        prints["kvr"] = fingerprint(kvr)
+    content = site_content(plugin_dir)
+    if content:
+        prints["dehlimusikk"] = fingerprint(json.dumps(content, sort_keys=True, ensure_ascii=False))
+    return prints
+
+
+def load_state() -> dict:
+    try:
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        site.warn(f"{site.shown(STATE_FILE)} could not be read, so every text shows as changed")
+        return {}
+
+
+def save_state(state: dict) -> None:
+    STATE_FILE.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def changed_since(path: Path) -> float:
+    """When a file last changed: now if it has uncommitted changes, otherwise
+    its last commit, or 0 when git cannot say."""
+    try:
+        status = subprocess.run(
+            ["git", "-C", str(path.parent), "status", "--porcelain", "--", path.name],
+            capture_output=True, text=True,
+        )
+        if status.returncode == 0 and status.stdout.strip():
+            return time.time()
+        log = subprocess.run(
+            ["git", "-C", str(path.parent), "log", "-1", "--format=%ct", "--", path.name],
+            capture_output=True, text=True,
+        )
+        return float(log.stdout.strip() or 0)
+    except (OSError, ValueError):
+        return 0
+
+
+def norwegian_behind(plugin_dir: Path) -> bool:
+    english = plugin_dir / "Description" / "en.md"
+    norwegian = plugin_dir / "Description" / "no.md"
+    if not (english.is_file() and norwegian.is_file()):
+        return False
+    return changed_since(english) > changed_since(norwegian)
+
+
+def report(plugin_dirs, state: dict) -> None:
+    out_of_date, behind = [], []
+    for plugin_dir in plugin_dirs:
+        name = plugin_dir.name.removesuffix("-plugin")
+        last = state.get(name, {})
+        sites = [SITE_NAMES[s] for s, p in site_fingerprints(plugin_dir).items() if last.get(s) != p]
+        if sites:
+            out_of_date.append(f"{name}: {', '.join(sites)}")
+        if norwegian_behind(plugin_dir):
+            behind.append(name)
+    if out_of_date:
+        site.info("Texts that differ from what each site last got:")
+        for line in out_of_date:
+            print(f"    {line}")
+    else:
+        site.info("Every site has the current text.")
+    if behind:
+        site.warn(
+            "Description/en.md has changed since Description/no.md in: "
+            + ", ".join(behind) + ". Check that the Norwegian text still says the same."
+        )
 
 
 def main(argv=None) -> int:
@@ -336,6 +446,10 @@ def main(argv=None) -> int:
         "--dehlimusikk", type=Path, metavar="FILE",
         help="the site's product file, whose entries for these plugins get the description",
     )
+    parser.add_argument(
+        "--published", choices=PASTED_SITES + ("all",), metavar="SITE",
+        help="record that these plugins' texts are now on gumroad, kvr or all",
+    )
     args = parser.parse_args(argv)
     plugin_dirs = []
     for name in args.plugins:
@@ -343,15 +457,43 @@ def main(argv=None) -> int:
         if not (plugin_dir / "README.md").is_file():
             site.die(f"{name}: no README.md")
         plugin_dirs.append(plugin_dir)
+
+    state = load_state()
+    if args.published:
+        sites = PASTED_SITES if args.published == "all" else (args.published,)
+        for plugin_dir in plugin_dirs:
+            prints = site_fingerprints(plugin_dir)
+            entry = state.setdefault(plugin_dir.name.removesuffix("-plugin"), {})
+            entry.update({s: prints[s] for s in sites if s in prints})
+        save_state(state)
+        site.info(f"Recorded {site.join_words([SITE_NAMES[s] for s in sites])} as current for "
+                  + site.join_words([p.name.removesuffix("-plugin") for p in plugin_dirs]))
+        report(plugin_dirs, state)
+        return 0
+
+    for plugin_dir in plugin_dirs:
         out_dir = OUT_DIR / plugin_dir.name.removesuffix("-plugin")
         out_dir.mkdir(parents=True, exist_ok=True)
-        written = [write_store_page(plugin_dir, out_dir), write_kvr_block(plugin_dir, out_dir)]
-        site.info("  ".join(site.shown(p) for p in written if p))
+        written = [out_dir / "gumroad.html"]
+        written[0].write_text(store_page_text(plugin_dir), encoding="utf-8")
+        kvr = kvr_text(plugin_dir)
+        if kvr is None:
+            site.warn(f"{plugin_dir.name}: no Description/en.md, so no KVR text")
+        else:
+            written.append(out_dir / "kvr.html")
+            written[1].write_text(kvr, encoding="utf-8")
+        site.info("  ".join(site.shown(p) for p in written))
     if args.dehlimusikk:
-        path = args.dehlimusikk.expanduser().resolve()
+        # A relative path means relative to where ./dmse was run.
+        caller = Path(os.environ.get("DMSE_CALLER_DIR", Path.cwd()))
+        path = (caller / args.dehlimusikk.expanduser()).resolve()
         if not path.is_file():
             site.die(f"{args.dehlimusikk}: no such file")
-        update_site_file(path, plugin_dirs)
+        for plugin_dir in update_site_file(path, plugin_dirs):
+            prints = site_fingerprints(plugin_dir)
+            state.setdefault(plugin_dir.name.removesuffix("-plugin"), {})["dehlimusikk"] = prints["dehlimusikk"]
+        save_state(state)
+    report(plugin_dirs, state)
     return 0
 
 

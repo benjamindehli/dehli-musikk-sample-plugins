@@ -28,6 +28,7 @@
 #   ./dmse site all --check     # ... report pages that are behind their README, exit 1 if any
 #   ./dmse copy subc            # write the store and KVR descriptions (build/copy/)
 #   ./dmse copy all --dehlimusikk products.json  # ... every plugin, and update the site file
+#   ./dmse copy subc --published gumroad  # record that the store has the current text (or kvr, all)
 #   ./dmse indexnow all         # show which pages changed since the last ping
 #   ./dmse indexnow all --submit  # ... and tell Bing/Yandex about them (IndexNow)
 #   ./dmse configure            # (re)run cmake; also done automatically when needed
@@ -36,6 +37,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+# Where the command was typed, so a relative path given to a command means
+# what it says there, even though everything below runs from the workspace.
+export DMSE_CALLER_DIR="$PWD"
 cd "$ROOT"
 BUILD_DIR="${BUILD_DIR:-build}"
 
@@ -333,9 +337,16 @@ cmd_copy() {
     done
     [ -n "${py:-}" ] || die "python3 not found (it ships with the Xcode command line tools)"
 
+    case " $* " in
+        *" --published "*)
+            "$py" site/copy.py $dirs "$@"
+            return ;;
+    esac
+
     info "Writing product descriptions:$dirs"
     "$py" site/copy.py $dirs "$@"
-    info "${GRN}Done.$N Open one with:  open build/copy/<plugin>/gumroad.html"
+    info "${GRN}Done.$N Open one with:  open build/copy/<plugin>/gumroad.html
+  After pasting, record it:  ./dmse copy <plugin> --published gumroad   (or kvr, or all)"
 }
 
 cmd_indexnow() {

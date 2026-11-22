@@ -121,6 +121,14 @@ Each plugin is also described on dehlimusikk.no, on its store page and on KVR. T
 - `build/copy/<plugin>/kvr.html` is the HTML block for the KVR product page: the demo video, the description and a link to the product page.
 - With `--dehlimusikk`, the `content.en` and `content.no` of each plugin's entry in the site's product file, matched by title, are replaced with the description as plain lines. A list is folded into the line that introduces it, and the features list becomes one "Features:" line. Equipment the README links to on dehlimusikk.no is linked where the description first names it. Every other field and every other product in the file is left as it is.
 
+Every run ends with the plugins whose text differs from what each site last got, so only those pages need opening. After pasting, record it:
+
+```
+./dmse copy omni-84 --published gumroad   # or kvr, or all
+```
+
+The path given to `--dehlimusikk` may be absolute or relative to the folder the command is run from. The dehlimusikk.no text is recorded when `--dehlimusikk` writes it. The record is `site/.copy-state.json`, a local file that is not committed, so losing it only means every text shows as changed once. A plugin whose `Description/en.md` has changed since its `Description/no.md` is named as well, since the Norwegian text then needs a look.
+
 ## Packaging and distribution
 
 The plugins are paid products. Their sample audio, images and impulse responses are never committed to any repository, so a fresh clone re runs the converter from a local copy of each DecentSampler library. macOS builds are signed and notarized through `./dmse package`, which reads the signing identities from `packaging/signing.env` (gitignored). Linux tarballs are built with `./dmse tarball`. Windows installers are planned.
