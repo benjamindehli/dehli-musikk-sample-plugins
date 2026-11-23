@@ -23,7 +23,9 @@ build/copy/<plugin>/:
 
 With --dehlimusikk, the content.en and content.no of each plugin's entry in
 that file (matched by title) are replaced with the description as plain lines,
-with equipment named in the README linked to its page on the site. Every other
+with equipment linked to its page on the site where the description first
+names it. The pages and their names are in site/equipment.json, together with
+the pages the plugin's README links to. Every other
 field and every other product is left as it is.
 
 The texts describe what is released: the README and the description are read
@@ -68,6 +70,9 @@ OUT_DIR = ROOT / "build" / "copy"
 LEFT_OUT = (site.SPEC_SECTION, site.ABOUT_SECTION)
 SITE_URL = "https://www.dehlimusikk.no/"
 STATE_FILE = site.SITE_DIR / ".copy-state.json"
+# Equipment pages on dehlimusikk.no and the names each is known by, so a
+# description that names a piece of equipment links to its page.
+EQUIPMENT_FILE = site.SITE_DIR / "equipment.json"
 PASTED_SITES = ("gumroad", "kvr")
 SITE_NAMES = {"gumroad": "the store", "kvr": "KVR", "dehlimusikk": "dehlimusikk.no"}
 GITHUB_RE = re.compile(r"github\.com[:/]([^/]+)/([^/.]+?)(?:\.git)?/?$")
@@ -264,9 +269,15 @@ def kvr_text(plugin_dir: Path):
 
 
 def equipment_links(plugin_dir: Path):
-    """Equipment the README links to on the site, as (name, site path)."""
-    _, refs = site.parse_markdown(read_file(plugin_dir, "README.md"))
+    """Equipment pages on the site, as (name, site path): every page in
+    site/equipment.json, under each name it is known by, and the pages the
+    plugin's current README links to. Equipment pages are not tied to a
+    release, so the README is read from the working copy."""
     links = []
+    if EQUIPMENT_FILE.is_file():
+        for path, names in json.loads(EQUIPMENT_FILE.read_text(encoding="utf-8")).items():
+            links += [(name, path) for name in names]
+    _, refs = site.parse_markdown((plugin_dir / "README.md").read_text(encoding="utf-8"))
     for name, url in refs.items():
         if url.startswith(SITE_URL + "equipment/"):
             links.append((name, url[len(SITE_URL):]))
