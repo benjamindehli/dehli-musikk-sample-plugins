@@ -4,8 +4,9 @@
 # The sample packs are paid content and never go to GitHub, so what this builds
 # carries no sound. Setup.exe takes samples.pak and samples.pak.json from the
 # folder it is run from, and install.sh takes them from its samples/ folder.
-# Each instrument's pack is added to the two artefacts below on the Mac,
-# giving one zip (Windows) or tar.gz (Linux) per instrument for the store.
+# `./dmse bundle` on the Mac adds each instrument's pack to the two
+# artefacts below, giving one zip (Windows) or tar.gz (Linux) per instrument
+# for the store.
 #
 # The instruments are built from the heads of their repos, cloned beside the
 # engine by fetch-siblings.sh, so run this once every release commit is on
@@ -97,8 +98,8 @@ jobs:
         run: cmake -B build-linux -DCMAKE_BUILD_TYPE=Release
 
       # Builds each instrument's VST3 and Standalone, then its tarball. With no
-      # pack in the repo, a tarball has no samples/ folder until one is added
-      # on the Mac.
+      # pack in the repo, a tarball has no samples/ folder until ./dmse bundle
+      # adds one.
       - name: Build every instrument and its tarball
         env:
           BUILD_DIR: build-linux

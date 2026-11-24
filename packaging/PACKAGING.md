@@ -194,9 +194,13 @@ and the `Setup.exe` removes the warning. That is the only thing a cert buys here
 ### 3c. Windows and Linux release checklist
 1. Push every release commit, then run "Windows and Linux builds" from the Actions tab.
 2. Download its two artefacts.
-3. On your Mac, zip each Setup.exe with its plugin's `samples.pak` and `samples.pak.json`
-   beside it, and add the same two files to a `samples/` folder in each tarball.
-4. Publish the zips and tarballs with the §3b buyer note.
+3. On your Mac, run `./dmse bundle all ~/Downloads`, or wherever the artefacts are, as the
+   zips GitHub gives or unzipped. It adds each plugin's sample pack and writes, into
+   `build/bundle/`, one `<name>-<version>-windows.zip` (Setup.exe with the pack beside it
+   and an `Install.txt` with §3b's note) and one `<name>-<version>-linux-x86_64.tar.gz` per
+   plugin, with their checksums in `SHA256SUMS.txt`. It refuses a download whose version
+   is not the one in the plugin's `CMakeLists.txt`.
+4. Upload the zips and tarballs to the store with their checksums.
 
 The Windows and Linux builds are not tested on hardware, so say so where they are offered.
 

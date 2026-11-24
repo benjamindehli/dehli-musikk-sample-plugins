@@ -48,8 +48,8 @@
 ; Sample pack: samples ship as a memory-mapped pack, NOT inside the binaries, and NOT
 ; inside this installer either. The pack is paid content and never goes to GitHub, where
 ; this installer is built, so Setup.exe takes samples.pak and samples.pak.json from the
-; folder it is run from ({src}) at install time. They are zipped with it on the Mac,
-; one zip per plugin. They install to {commonappdata} (C:\ProgramData)
+; folder it is run from ({src}) at install time. `./dmse bundle` on the Mac zips them
+; with it, one zip per plugin. They install to {commonappdata} (C:\ProgramData)
 ; \DehliMusikk\<product>\, where the engine looks after the per-user dev path.
 
 [Setup]

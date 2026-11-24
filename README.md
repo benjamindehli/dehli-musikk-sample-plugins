@@ -8,7 +8,7 @@ Each sub project is its own git repository, co located here as siblings so they 
 
 * `CMakeLists.txt` fetches JUCE once and adds every sub project. It sets universal macOS binaries (arm64 plus x86_64), a default Release build type and the shared `dmse_add_plugin` helper from the engine.
 * `dmse` is a single entry point for the workflow, so neither you nor a tool has to remember the raw cmake, converter and packaging incantations.
-* `packaging/` holds the macOS signing and notarization scripts, the Linux tarball builder and the shell completion for `dmse`.
+* `packaging/` holds the macOS signing and notarization scripts, the Windows installer, the Linux tarball builder, the script that adds the sample packs to both, and the shell completion for `dmse`.
 * `site/` holds the product page generator and its stylesheet. It renders each plugin repository's README into the `docs/` folder that GitHub Pages serves.
 
 The sub repositories, each pulled in through `add_subdirectory`, are:
@@ -31,6 +31,7 @@ Run everything through `./dmse`. A plugin name is matched loosely against its fo
 ./dmse format               # reformat all C++ to LLVM style, or --check to just report
 ./dmse package omni-84      # sign and notarize the macOS .pkg (needs signing config)
 ./dmse tarball omni-84      # build the Linux .tar.gz
+./dmse bundle all ~/Downloads  # add the sample packs to the Windows and Linux builds
 ./dmse screenshots omni-84  # render the plugin's Screenshots/ images from its recipe
 ./dmse site omni-84         # render the product page into the plugin's docs/ folder
 ./dmse copy omni-84         # write the store and KVR descriptions into build/copy/
@@ -133,6 +134,6 @@ The path given to `--dehlimusikk` may be absolute or relative to the folder the 
 
 ## Packaging and distribution
 
-The plugins are paid products. Their sample audio, images and impulse responses are never committed to any repository, so a fresh clone re runs the converter from a local copy of each DecentSampler library. macOS builds are signed and notarized through `./dmse package`, which reads the signing identities from `packaging/signing.env` (gitignored). Linux tarballs are built with `./dmse tarball`. Windows installers are planned.
+The plugins are paid products. Their sample audio, images and impulse responses are never committed to any repository, so a fresh clone re runs the converter from a local copy of each DecentSampler library. macOS builds are signed and notarized through `./dmse package`, which reads the signing identities from `packaging/signing.env` (gitignored). The Windows installers and Linux tarballs are built on GitHub by the "Windows and Linux builds" workflow, run by hand, without samples. `./dmse bundle` then adds each plugin's sample pack to the downloaded builds on the Mac, so the packs never go to GitHub. `packaging/PACKAGING.md` has the steps.
 
 The finished plugins are available from [store.dehlimusikk.no](https://store.dehlimusikk.no/).
