@@ -16,7 +16,9 @@ unzips them on its own). For every plugin it writes, into build/bundle/:
 
 and records their SHA-256 checksums in build/bundle/SHA256SUMS.txt. The
 version in a file name must be the one in the plugin's CMakeLists.txt, so a
-build from before the release commits were pushed is refused.
+build from before the release commits were pushed is refused. A plugin whose
+impulse responses are loose in assets/ir rather than in samples.pak is refused
+too, since the builds from GitHub have none compiled in.
 """
 
 import argparse
@@ -181,6 +183,12 @@ def main():
             pack = ROOT / plugin_dir / "assets" / "samples" / "samples.pak"
             if not pack.exists() or not pack.with_name("samples.pak.json").exists():
                 problems.append(f"{product}: no sample pack in {plugin_dir}/assets/samples, run ./dmse convert first")
+                continue
+            # The builds from GitHub have no impulse responses compiled in, so
+            # they must be in the pack, where the converter now puts them.
+            if any((ROOT / plugin_dir / "assets" / "ir").glob("*.flac")):
+                problems.append(f"{product}: its impulse responses are in {plugin_dir}/assets/ir rather than in "
+                                f"samples.pak, run ./dmse convert {plugin_dir.removesuffix('-plugin')} again")
                 continue
 
             for system, name, prefix, suffix, out_name in (

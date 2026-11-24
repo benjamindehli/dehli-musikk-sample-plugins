@@ -166,7 +166,7 @@ builds each `<Target>_All` and passes the per-product defines to Inno Setup. The
 the `windows-installers-without-samples` artefact, one `<name>-<version>-Setup.exe` per
 plugin.
 
-The installer holds no samples. When run, it takes `samples.pak` and `samples.pak.json`
+The installer holds no samples. The converter puts a plugin's impulse responses in `samples.pak` with its samples, so the binaries built on GitHub need neither. When run, it takes `samples.pak` and `samples.pak.json`
 from its own folder, and it stops with a message before installing anything if they are
 missing, which is what happens when Setup.exe is run from inside the zip. It installs the
 VST3 to `C:\Program Files\Common Files\VST3`, the Standalone to
