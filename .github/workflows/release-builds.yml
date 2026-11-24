@@ -1,0 +1,118 @@
+# The Windows installers and Linux tarballs for every instrument, without their
+# samples.
+#
+# The sample packs are paid content and never go to GitHub, so what this builds
+# carries no sound. Setup.exe takes samples.pak and samples.pak.json from the
+# folder it is run from, and install.sh takes them from its samples/ folder.
+# Each instrument's pack is added to the two artefacts below on the Mac,
+# giving one zip (Windows) or tar.gz (Linux) per instrument for the store.
+#
+# The instruments are built from the heads of their repos, cloned beside the
+# engine by fetch-siblings.sh, so run this once every release commit is on
+# GitHub. The installers are not code-signed, by choice, so Windows shows a
+# SmartScreen warning the first time (see packaging/PACKAGING.md).
+
+name: Windows and Linux builds
+
+on:
+  workflow_dispatch:
+
+# The jobs only read public repositories and build them.
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+jobs:
+  windows:
+    name: Windows installers
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout orchestration root
+        uses: actions/checkout@v7
+
+      - name: Fetch the engine, the converter and the 13 plugin repos
+        shell: bash
+        run: bash .github/scripts/fetch-siblings.sh
+
+      - name: List the commits being built
+        shell: bash
+        run: for d in dehli-musikk-sampler-engine *-plugin; do echo "$d $(git -C "$d" log -1 --format='%h %s')"; done
+
+      - name: Configure (MSVC, x64)
+        # Build into a SHORT root (C:\b). The runner checks out to
+        # D:\a\<repo>\<repo>\, and JUCE's VST3 post-build (juce_vst3_helper LoadLibraryW
+        # for moduleinfo.json, plus the copy) walks a path that repeats the product name
+        # (…\Voltage Controlled Cassette Organ.vst3\Contents\x86_64-win\…vst3) and tips
+        # past Windows MAX_PATH (260) for the longest-named plugin. A short build root
+        # keeps every artefact path under the limit. Also: no pinned VS generator — let
+        # CMake auto-detect (the runner's VS is newer than 2022); -A keeps it multi-config
+        # so artefacts stay under Release\.
+        run: cmake -B C:\b -A x64
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      # Builds each instrument's VST3 and Standalone, then its installer.
+      - name: Build every instrument and its installer
+        shell: pwsh
+        env:
+          BUILD_DIR: 'C:\b'          # same short build root as above (MAX_PATH)
+        # Found rather than named, so a new major version of Inno Setup still works.
+        run: |
+          $env:ISCC = (Get-ChildItem 'C:\Program Files*\Inno Setup*\ISCC.exe' | Select-Object -First 1).FullName
+          if (-not $env:ISCC) { Write-Error "ISCC.exe not found" }
+          ./packaging/windows/make_installers.ps1
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-installers-without-samples
+          path: packaging/windows/build/*-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Linux tarballs
+    # The oldest hosted Ubuntu, so the binaries need no newer glibc than 2.35.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout orchestration root
+        uses: actions/checkout@v7
+
+      - name: Fetch the engine, the converter and the 13 plugin repos
+        run: bash .github/scripts/fetch-siblings.sh
+
+      - name: List the commits being built
+        run: for d in dehli-musikk-sampler-engine *-plugin; do echo "$d $(git -C "$d" log -1 --format='%h %s')"; done
+
+      - name: Install JUCE build dependencies
+        timeout-minutes: 10
+        run: bash .github/scripts/install-linux-deps.sh
+
+      - name: Configure
+        run: cmake -B build-linux -DCMAKE_BUILD_TYPE=Release
+
+      # Builds each instrument's VST3 and Standalone, then its tarball. With no
+      # pack in the repo, a tarball has no samples/ folder until one is added
+      # on the Mac.
+      - name: Build every instrument and its tarball
+        env:
+          BUILD_DIR: build-linux
+        run: |
+          packaging/linux/make_tarballs.sh
+          mkdir -p out
+          cp */packaging/linux/build/*.tar.gz out/
+          ls -l out
+          test "$(ls out | wc -l)" -eq 13
+
+      - name: Upload tarballs
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-tarballs-without-samples
+          path: out/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14

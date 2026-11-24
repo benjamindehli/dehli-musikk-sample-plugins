@@ -13,7 +13,8 @@
 ;          /DMyAppGuid=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX /DMyVersion=1.0.0 ^
 ;          packaging\windows\installer.iss
 ;
-; Output: packaging\windows\build\<name>-<version>-Setup.exe
+; Output: packaging\windows\build\<name>-<version>-Setup.exe, which needs samples.pak and
+; samples.pak.json beside it when run (see the [Files] section).
 ; Optionally Authenticode-sign the resulting Setup.exe (see ../PACKAGING.md).
 ;
 ; Paths below assume the top-level build dir is <repo>\build. Override with
@@ -44,11 +45,12 @@
 #define MyPublisher "DehliMusikk"
 #define ArtRelease BuildDir + "\" + MyDir + "\" + MyTarget + "_artefacts\Release"
 
-; Sample pack: samples ship as a memory-mapped pack, NOT inside the binaries. It installs
-; to {commonappdata} (C:\ProgramData) \DehliMusikk\<product>\, where the engine looks after
-; the per-user dev path. WITHOUT this, a packed plugin is SILENT on a buyer's machine.
-; Plugins without a pack (embedded samples) compile this section away.
-#define PackSrc "..\..\" + MyDir + "\assets\samples\samples.pak"
+; Sample pack: samples ship as a memory-mapped pack, NOT inside the binaries, and NOT
+; inside this installer either. The pack is paid content and never goes to GitHub, where
+; this installer is built, so Setup.exe takes samples.pak and samples.pak.json from the
+; folder it is run from ({src}) at install time. They are zipped with it on the Mac,
+; one zip per plugin. They install to {commonappdata} (C:\ProgramData)
+; \DehliMusikk\<product>\, where the engine looks after the per-user dev path.
 
 [Setup]
 AppId={{{#MyAppGuid}}
@@ -83,11 +85,12 @@ Source: "{#ArtRelease}\VST3\{#MyName}.vst3\*"; DestDir: "{commoncf64}\VST3\{#MyN
 Source: "{#ArtRelease}\Standalone\{#MyName}.exe"; DestDir: "{app}"; \
     Components: standalone; Flags: ignoreversion
 
-; Memory-mapped sample pack (see PackSrc above) — required by both components.
-#if FileExists(PackSrc)
-Source: "{#PackSrc}";      DestDir: "{commonappdata}\DehliMusikk\{#MyName}"; Flags: ignoreversion
-Source: "{#PackSrc}.json"; DestDir: "{commonappdata}\DehliMusikk\{#MyName}"; Flags: ignoreversion
-#endif
+; Memory-mapped sample pack, read from beside Setup.exe (see above). InitializeSetup
+; stops the install with a message when it is missing.
+Source: "{src}\samples.pak";      DestDir: "{commonappdata}\DehliMusikk\{#MyName}"; \
+    Flags: external ignoreversion
+Source: "{src}\samples.pak.json"; DestDir: "{commonappdata}\DehliMusikk\{#MyName}"; \
+    Flags: external ignoreversion
 
 [Icons]
 Name: "{group}\{#MyName}";              Filename: "{app}\{#MyName}.exe"; Components: standalone
@@ -96,3 +99,16 @@ Name: "{autodesktop}\{#MyName}";        Filename: "{app}\{#MyName}.exe"; Compone
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"; \
     Components: standalone; Flags: unchecked
+
+[Code]
+// Windows opens a zip like a folder, and running Setup.exe from there unpacks only
+// Setup.exe, so the pack beside it is not found. Say so before anything is installed.
+function InitializeSetup(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{src}\samples.pak')) and
+            FileExists(ExpandConstant('{src}\samples.pak.json'));
+  if not Result then
+    MsgBox('The {#MyName} samples were not found next to this installer.' + #13#10 + #13#10 +
+           'Unzip the whole download first, then run Setup from the unzipped folder.',
+           mbError, MB_OK);
+end;

@@ -9,13 +9,15 @@ are two macOS paths:
   macOS installers.
 - **Path A, Free (ad-hoc):** no Apple Developer account. Ships an unsigned `.pkg` that
   buyers open once with right-click ▸ Open. Fallback only.
-- **Windows:** an **unsigned** Inno Setup installer for the VST3 and Standalone. There is
-  no code-signing cert by choice, so buyers get a one-time SmartScreen warning (see §3).
+- **Windows:** an **unsigned** Inno Setup installer for the VST3 and Standalone, built on
+  GitHub, zipped with the sample pack on your Mac. There is no code-signing cert by
+  choice, so buyers get a one-time SmartScreen warning (see §3b).
+- **Linux:** a tarball with a per-user `install.sh`, built on GitHub the same way.
 
-> Build host: macOS packaging happens on your Mac. The Windows build is validated in CI
-> on cloud Windows runners, but the shippable installers are built on a real Windows
-> machine because the sample packs are private and not in CI. The Linux dev sandbox can
-> neither sign nor build Windows.
+> Build host: macOS packaging happens on your Mac. The Windows installers and Linux
+> tarballs are built without samples by `.github/workflows/release-builds.yml` on GitHub's
+> runners, since the sample packs are paid content and never go to GitHub. The packs are
+> added on your Mac afterwards, so no Windows or Linux machine is needed.
 
 ## Packaging any plugin, or all of them
 
@@ -41,11 +43,11 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\make_installers.ps1
 Each product's `.pkg` lands in its own `<plugin>/packaging/macos/build/<Target>/`. Windows
 setups land in `packaging/windows/build/`.
 
-**Sample packs ship inside the installers.** Both packagers detect
-`<plugin>/assets/samples/samples.pak` and install it system-wide (macOS
-`/Library/Application Support/DehliMusikk/<product>/`, Windows
-`C:\ProgramData\DehliMusikk\<product>\`), which is where the engine falls back to when the
-per-user dev path is absent. Reconvert before packaging so the pack is present. Installers
+**Sample packs ship with the installers.** The macOS packager puts
+`<plugin>/assets/samples/samples.pak` inside the `.pkg` and installs it to
+`/Library/Application Support/DehliMusikk/<product>/`. The Windows installer takes the pack
+from the folder it is run from and installs it to `C:\ProgramData\DehliMusikk\<product>\`.
+Those are where the engine falls back to when the per-user dev path is absent. Reconvert before packaging so the pack is present. Installers
 for packed plugins are correspondingly large, since the samples live there. The
 `omni84-notary` profile authenticates your Apple account, so it works for every plugin.
 
@@ -153,57 +155,50 @@ spctl --assess --type install --verbose=2 Omni-84-<version>.pkg   # "accepted"
 ## 3. Windows
 
 The installers are **unsigned** (no code-signing certificate, by choice), so buyers get a
-one-time SmartScreen warning. See the buyer note in §3c. The Windows *build* is validated
-in CI on every run (`.github/workflows/windows-build.yml`, cloud Windows runners: it
-compiles every plugin and builds the installers unsigned and sample-free, just to prove
-the tooling). The **shippable** installers, the ones that actually contain the sample
-packs, are built on a real Windows machine, because the packs are private content and
-aren't in CI.
+one-time SmartScreen warning. See the buyer note in §3b.
 
-### 3a. Prerequisites (on the Windows machine)
-- Visual Studio 2022 (MSVC) and CMake.
-- [Inno Setup 6](https://jrsoftware.org/isinfo.php), with `ISCC.exe` on PATH (or set
-  `$env:ISCC`).
-- Your private DecentSampler libraries, so the sample packs can be regenerated.
-- **Check out and build from a short path** (for example `C:\dev`), or set a short build
-  dir (`BUILD_DIR=C:\b`). JUCE's VST3 post-build step repeats the product name deep in the
-  path (`…\Voltage Controlled Cassette Organ.vst3\Contents\x86_64-win\…vst3`), so from a
-  long root it trips Windows' 260-char MAX_PATH on the longest-named plugin (VCCO).
+### 3a. How the installer is made
 
-### 3b. Build + package (all plugins, or a subset)
-```bat
-cmake -B build -A x64
-:: (-A x64 auto-detects your installed Visual Studio, or pass -G "Visual Studio NN YYYY" to pin it)
-:: FIRST regenerate each plugin's assets\samples\samples.pak from your private
-:: libraries (run the converter per plugin). Without the pack the installer builds
-:: fine but the installed plugin is SILENT.
-powershell -ExecutionPolicy Bypass -File packaging\windows\make_installers.ps1
-:: subset:  ... make_installers.ps1 StyloPoly SubC
-```
-The driver reads `build\dmse_plugins\<Target>.json`, builds each `<Target>_All`, and
-compiles the shared `installer.iss` with the right per-product defines. Setups land in
-`packaging\windows\build\<name>-<version>-Setup.exe`. Each one installs the VST3 to
-`C:\Program Files\Common Files\VST3`, the Standalone to `C:\Program Files\DehliMusikk\<name>`,
-and the sample pack to `C:\ProgramData\DehliMusikk\<name>\` (where the engine looks).
+`.github/workflows/release-builds.yml`, run by hand from the Actions tab, builds every
+plugin on a GitHub Windows runner and compiles the shared `installer.iss` for each through
+`packaging\windows\make_installers.ps1`. The driver reads `build\dmse_plugins\<Target>.json`,
+builds each `<Target>_All` and passes the per-product defines to Inno Setup. The result is
+the `windows-installers-without-samples` artefact, one `<name>-<version>-Setup.exe` per
+plugin.
 
-### 3c. Unsigned, buyer note
-> **Windows:** the installer isn't code-signed, so SmartScreen shows "Windows protected
-> your PC" the first time. Click **More info ▸ Run anyway**. You only do this once.
+The installer holds no samples. When run, it takes `samples.pak` and `samples.pak.json`
+from its own folder, and it stops with a message before installing anything if they are
+missing, which is what happens when Setup.exe is run from inside the zip. It installs the
+VST3 to `C:\Program Files\Common Files\VST3`, the Standalone to
+`C:\Program Files\DehliMusikk\<name>` and the sample pack to `C:\ProgramData\DehliMusikk\<name>\`
+(where the engine looks).
+
+The same workflow builds the Linux tarballs without a `samples/` folder, as the
+`linux-tarballs-without-samples` artefact. Its `install.sh` copies the pack from there.
+
+Running `make_installers.ps1` on a Windows machine with Visual Studio, CMake and Inno Setup
+6 gives the same installers. Build from a short path (for example `C:\dev`), or set a
+short build dir (`BUILD_DIR=C:\b`). JUCE's VST3 post-build step repeats the product name
+deep in the path (`…\Voltage Controlled Cassette Organ.vst3\Contents\x86_64-win\…vst3`),
+so from a long root it trips Windows' 260-char MAX_PATH on the longest-named plugin.
+
+### 3b. Unsigned, buyer note
+> **Windows:** unzip the whole download first, then run Setup from the unzipped folder.
+> The installer isn't code-signed, so SmartScreen shows "Windows protected your PC" the
+> first time. Click **More info ▸ Run anyway**. You only do this once.
 
 Publishing a **SHA-256 checksum** next to each download lets buyers verify the file is
 intact. If you ever reconsider, an OV or EV Authenticode cert plus `signtool` on the `.exe`
 and the `Setup.exe` removes the warning. That is the only thing a cert buys here.
 
-### 3d. Windows release checklist
-1. CI green (build + installer tooling) on the release commit.
-2. On the Windows machine, reconvert every plugin from the private libraries so each
-   `assets\samples\samples.pak` exists (else the installed plugin is silent).
-3. Run `make_installers.ps1` to get one `*-Setup.exe` per plugin.
-4. **Test, the part CI cannot do.** Install, then load the VST3 **and** Standalone in at
-   least two DAWs (for example Reaper plus one of Ableton, FL, or Cubase). Confirm each
-   plugin finds its samples and sounds right, the UI renders, and MIDI plus the on-screen
-   keyboard play.
-5. Publish the installers with their SHA-256 checksums and the §3c buyer note.
+### 3c. Windows and Linux release checklist
+1. Push every release commit, then run "Windows and Linux builds" from the Actions tab.
+2. Download its two artefacts.
+3. On your Mac, zip each Setup.exe with its plugin's `samples.pak` and `samples.pak.json`
+   beside it, and add the same two files to a `samples/` folder in each tarball.
+4. Publish the zips and tarballs with the §3b buyer note.
+
+The Windows and Linux builds are not tested on hardware, so say so where they are offered.
 
 ---
 
