@@ -8,7 +8,8 @@
 # Installs to standard per-user locations:
 #   VST3        ~/.vst3/@PRODUCT@.vst3            (scanned by REAPER, Bitwig, Ardour, ...)
 #   Standalone  ~/.local/bin/@PRODUCT@ (+ .desktop entry)
-#   Samples     ~/.local/share/DehliMusikk/@PRODUCT@/samples.pak
+#   Samples     ~/.local/share/DehliMusikk/@PRODUCT@/samples.pak, or under
+#               $XDG_DATA_HOME when set, which is where the plugin looks
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -16,8 +17,12 @@ cd "$(dirname "$0")"
 PRODUCT="@PRODUCT@"
 VST3_DEST="$HOME/.vst3"
 BIN_DEST="$HOME/.local/bin"
-DATA_DEST="$HOME/.local/share/DehliMusikk/$PRODUCT"
-DESKTOP_DEST="$HOME/.local/share/applications"
+case "${XDG_DATA_HOME:-}" in
+    /*) DATA_HOME="$XDG_DATA_HOME" ;;
+    *)  DATA_HOME="$HOME/.local/share" ;;
+esac
+DATA_DEST="$DATA_HOME/DehliMusikk/$PRODUCT"
+DESKTOP_DEST="$DATA_HOME/applications"
 
 if [ "${1:-}" = "--uninstall" ]; then
     echo "Removing $PRODUCT ..."
